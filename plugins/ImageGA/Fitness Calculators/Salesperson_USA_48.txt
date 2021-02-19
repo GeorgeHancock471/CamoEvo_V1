@@ -1,0 +1,440 @@
+setBatchMode("true");
+
+
+//__________________________________________________________________
+
+//=========================================================
+/*
+FITNESS PRE-CHECKER (Recommended for all calculators )
+_____________________________________________________
+
+Counts the number of survival tables in the last directory used by ImageJ
+
+ NOTE: the algorithim will always premake a results table.
+
+
+*/
+//=========================================================
+
+
+
+settingsFilePath = getDirectory("plugins") + "ImageGA/RequisitFunctions/PopulationLocation.txt";
+
+
+if(File.exists(settingsFilePath) == 1){
+	settingsString=File.openAsString(settingsFilePath);	// open txt data file
+	defaultSettings=split(settingsString, "\n");
+} 
+
+
+//print(defaultSettings[0]);
+
+CheckDirectory = defaultSettings[0];
+
+GeneratArray = newArray("none");
+
+GeneratList  =  getFileList(CheckDirectory);
+
+//Array.show(GeneratList);
+
+for(i=0; i<GeneratList.length; i++) { // list all .txt files
+
+	if(endsWith(GeneratList[i], "_survival.txt")==1){
+		GeneratArray = Array.concat(GeneratArray, GeneratList[i]);
+	}
+
+
+}
+
+
+ArrayLeng = lengthOf(GeneratArray);
+
+//print (ArrayLeng);
+
+//Array.show(GeneratArray);
+
+
+csv = ".csv";
+tif = ".tif";
+txt = ".txt";
+png = ".png";
+
+
+// Index
+//---------------------------------------------------
+// Allows you to obtain the index of a Value within an Array.
+
+  function index(a, value) {
+      for (i=0; i<a.length; i++)
+          if (a[i]==value) return i;
+      return -1;
+  }
+
+// Obtain SubArray
+//---------------------------------------------------
+// Allows you to obtain a SubArray of a given Name and Length, where a is the array and b is the original number of rows.
+
+ function subArray(a, value, b) {
+	IndexLab = index(a, value);
+	Start = IndexLab + 1;
+	End = IndexLab  + b;
+	//print("startIndex: "+Start);
+	//print("endIndex: "+End);
+	return Array.slice(a, Start, End);
+}
+
+
+//--------------------------------------------------------------------------------------------
+
+GenNumber = ArrayLeng -1;
+GenNum = CheckDirectory + "generation_" + GenNumber + txt;
+GenName = "generation_" + GenNumber + txt;
+SurvGenNum= CheckDirectory + "generation_" + GenNumber +"_survival" + txt;
+
+//------------------------------------
+//Load Current Generation
+//------------------------------------
+
+if(File.exists(GenNum) == 1){
+GenerationString=File.openAsString(GenNum);	// open txt data file
+GenerationRows=split(GenerationString, "\n");
+
+	Column_Titles = GenerationRows[0];
+	CT=split(Column_Titles, "\t");
+	SiteNames=Array.deleteValue(CT, "ID");
+	SiteNames=Array.deleteValue(SiteNames, "Parent1");
+	SiteNames=Array.deleteValue(SiteNames, "Parent2");
+	F = lengthOf(CT);
+	RouteLeng = F;
+	
+VarLeng = GenerationRows.length-1;
+ColumnLength = VarLeng;
+
+Genotype_IDs = newArray();
+Col1 = newArray();
+for(X=1; X<GenerationRows.length; X++){
+Temp = split(GenerationRows[X], "\t");
+Genotype_IDs = Array.concat(Genotype_IDs, Temp);
+Col1 = Array.concat(Col1, Temp[0]);
+}
+//Array.show(Genotype_IDs, Col1);
+
+
+
+
+
+//------------------------------------------------
+// Make Pattern Directory
+//-------------------------------------------------
+fold = "SalespersonRoutes";
+PatternPath = CheckDirectory + fold;
+File.makeDirectory(PatternPath );
+
+
+
+noiseAmount = parseFloat(File.openAsString( getDirectory("plugins") + "ImageGA/Fitness Calculators/Salesperson/noise.txt" ) );
+
+	//Open Map
+//===========================
+
+photoFilePath = getDirectory("plugins") + "ImageGA/Fitness Calculators/Salesperson/USA.jpg";
+open(photoFilePath);
+rename("Map.jpg");
+
+
+	//Set Sites
+//============================
+Olympia = newArray("Olympia", 174, 170);
+
+Boise = newArray("Boise", 310, 334);
+
+Helena = newArray("Helena",444, 246);
+
+Salt_Lake_City = newArray("Salt_Lake_City", 412, 470);
+
+Denver = newArray("Denver", 610, 534);
+
+Cheyenne = newArray("Cheyenne", 616, 474);
+
+Pierre = newArray ("Pierre", 732, 350);
+
+Bismarck = newArray("Bismarck", 730, 266);
+
+St_Paul = newArray("St_Paul", 932, 320);
+
+Madison = newArray("Madison", 1032, 380);
+
+Lansing = newArray("Lansing", 1176, 368);
+
+Columbus = newArray("Columbus", 1236, 462);
+
+Washington = newArray("Washington",1290, 516);
+
+Harrisburg = newArray("Harrisburg", 1392, 412);
+
+Albany = newArray("Albany", 1446, 280);
+
+Montpelier= newArray("Montpelier", 1463, 225);
+
+
+Augusta = newArray("Augusta", 1538, 186);
+
+Concord = newArray("Concord", 1509, 237);
+
+Boston = newArray("Boston", 1533, 266);
+
+Providence = newArray("Providence",1529, 297);
+
+Hartford = newArray("Hartford", 1491, 306);
+
+Trenton = newArray("Trenton", 1465, 381);
+
+Dover = newArray("Dover", 1457, 436);
+
+
+Annapolis = newArray("Annapolis", 1422, 453);
+
+Richmond = newArray("Richmond", 1415, 510);
+
+Raleigh = newArray("Raleigh", 1395, 581);
+
+Columbia = newArray("Columbia",1337, 674);
+
+Tallahassee = newArray("Tallahassee", 1255, 825);
+
+Montgomery = newArray("Montgomery", 1181, 770);
+
+Atlanta = newArray("Atlanta", 1239, 710);
+
+
+Nashville = newArray("Nashville", 1151, 626);
+
+Frankfort = newArray("Frankfort", 1197, 546);
+
+Indianapolis = newArray("Indianapolis", 1153, 493);
+
+Springfield = newArray("Springfield",1049, 507);
+
+Des_Moines = newArray("Des_Moines", 949, 462);
+
+Lincoln = newArray("Lincoln", 843, 488);
+
+Topeka = newArray("Topeka", 879, 554);
+
+
+Jefferson_City = newArray("Jefferson_City", 972, 566);
+
+Little_Rock = newArray("Little_Rock", 989, 711);
+
+Jackson = newArray("Jackson", 1064, 794);
+
+Baton_Rouge = newArray("Baton_Rouge",1034, 865);
+
+Austin = newArray("Austin", 820, 888);
+
+Oklahoma_City = newArray("Oklahoma_City", 827, 698);
+
+Santa_Fe = newArray("Santa_Fe", 567, 679);
+
+
+
+Phoenix = newArray("Phoenix", 372, 739);
+
+Carson_City = newArray("Carson_City", 181, 477);
+
+Sacramento = newArray("Sacramento", 128, 485);
+
+Salem = newArray("Salem",143, 235);
+
+
+
+
+// Create Array of All Sites
+///===============================
+SitesArray = Array.concat(Olympia,Boise,Helena,Salt_Lake_City,Denver,Cheyenne,Pierre,Bismarck,St_Paul,Madison,Lansing,Columbus,Washington,Harrisburg,Albany,Montpelier,Augusta,Concord,Boston,Providence,Hartford,Trenton,Dover,Annapolis,Richmond,Raleigh,Columbia,Tallahassee,Montgomery,Atlanta,Nashville,Frankfort,Indianapolis,Dover,Springfield,Des_Moines,Lincoln,Topeka,Jefferson_City,Little_Rock,Jackson,Baton_Rouge,Austin,Oklahoma_City,Santa_Fe,Phoenix,Carson_City,Sacramento,Salem);
+
+
+//		Get Site Order
+//================================
+FitnessArray=newArray(ColumnLength);
+
+
+for ( k=0; k<ColumnLength; k++ ) { 
+
+SiteOrderArray = subArray(Genotype_IDs, Col1[k], F-2);
+
+SiteOrderArray2 = Array.rankPositions(SiteOrderArray);
+SiteOrderArray2  = Array.concat(SiteOrderArray2, SiteOrderArray2[0]);
+SiteOrderArray3=newArray();
+
+for (i=0; i<SiteOrderArray2.length; i++){
+Temp=SiteOrderArray2[i];
+Temp=SiteNames[Temp];
+SiteOrderArray3=Array.concat(SiteOrderArray3,Temp);
+}
+//Array.show(SiteOrderArray2, SiteOrderArray3);
+
+//print(VarLeng);
+
+
+
+
+//	Get Fitness
+//===============================
+
+RouteLength = 0;
+
+	//	RouteLength
+	//------------------------------------------------------
+
+	for (f=0; f<SiteOrderArray2.length-1; f++){
+
+	Site1a = SiteOrderArray2[f];
+	Site2a = SiteOrderArray2[f+1];
+
+	Site1b = SiteNames[Site1a];
+	Site2b = SiteNames[Site2a];
+	
+	
+	Site1 = subArray(SitesArray, Site1b, 3);
+	Site2 =  subArray(SitesArray, Site2b, 3);
+	
+
+
+	route = Array.concat(Site1,Site2);
+	
+	
+	
+	a1 =  Math.sqr(parseFloat(route[0]) - parseFloat(route[2]) );
+
+	b1 =  Math.sqr(parseFloat(route[1]) - parseFloat(route[3]) );
+
+	Length = Math.sqrt (  a1 + b1 );  
+
+
+
+	RouteLength = RouteLength + Length;
+	
+
+	print(RouteLength);
+			}
+
+
+	
+	RouteSpeed = -1 * RouteLength;	
+
+	FitnessArray[k] = RouteSpeed;
+	
+	
+	}
+	
+
+
+IDArray = Array.copy(Col1);
+
+surivalString1 = Array.concat("ID", "fitness");
+surivalString = String.join(surivalString1, "\t");
+File.append(surivalString, SurvGenNum);
+
+for(i=0; i< IDArray.length; i++){
+
+surivalString1 = Array.concat(IDArray[i], FitnessArray[i]);
+
+surivalString = String.join(surivalString1, "\t");
+
+File.append(surivalString, SurvGenNum);
+
+}
+
+//File.close(dataFile);
+
+
+
+
+//PRINT The BEST Salesperson
+//-----------------------------------------------------
+
+setColor("red");
+setLineWidth(4);
+
+//Get the best Route
+
+FitnessRanking = Array.rankPositions(FitnessArray);
+
+Fittest = lengthOf(FitnessRanking)-1;
+
+FittestID = FitnessRanking[Fittest];
+
+FittestID = IDArray[FittestID];
+
+k = FittestID;
+
+SiteOrderArray = subArray(Genotype_IDs, FittestID, F-2);
+
+SiteOrderArray2 = Array.rankPositions(SiteOrderArray);
+SiteOrderArray2 = Array.concat(SiteOrderArray2, SiteOrderArray2[0]);
+
+
+//	Get Fitness
+//===============================
+
+	//	RouteLength
+	//------------------------------------------------------
+
+	for (f=0; f<SiteOrderArray2.length-1; f++){
+	
+	label="route_"+f;
+
+	Site1a = SiteOrderArray2[f];
+
+	Site2a = SiteOrderArray2[f+1];
+
+	Site1b = SiteNames[Site1a];
+
+	Site2b = SiteNames[Site2a];
+	
+	
+	Site1 = subArray(SitesArray, Site1b, 3);
+
+	Site2 =  subArray(SitesArray, Site2b, 3);
+	
+	route = Array.concat(Site1,Site2);
+
+	makeLine(route[0],route[1],route[2],route[3],3);
+
+	roiManager("Add");
+	roiManager("select", roiManager("count")-1  );
+	roiManager("rename", label);
+
+
+	}
+
+
+	roiManager("Select", Array.getSequence(roiManager("count")));
+	roiManager("XOR");
+	roiManager("Add");
+	roiManager("select", roiManager("count")-1  );
+	roiManager("rename", "Full Path");
+
+
+selectWindow("Map.jpg");
+roiManager("select", roiManager("count")-1  );
+run("Fill", "slice");
+pat = "\\" + "Fittest Route_Gen" + GenNumber + tif;
+PatternPath = CheckDirectory + fold + pat;
+saveAs("Tiff", PatternPath);
+
+close("*");
+
+roiManager("Deselect");
+
+roiManager("Delete");
+
+
+
+
+
+}
+
+
+setBatchMode("false");

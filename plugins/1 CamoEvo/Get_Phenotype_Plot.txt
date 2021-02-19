@@ -1,0 +1,438 @@
+/*____________________________________________________________________
+
+	Title: Phenotype Plot
+	Authors:  George Hancock 
+	Date: 27/01/2021
+	
+.................................................................................................................
+
+Description:
+''''''''''''''''''''''''''''''''
+Allows the user to create a customisable plot for a CamoEvo population.
+
+*/
+
+
+csv = ".csv";
+tif = ".tif";
+txt = ".txt";
+png = ".png";
+
+close("*");
+
+//GET FILE DIRECTORY
+//------------------------------------------------------
+
+
+
+popLocalDir =  getDirectory("plugins") + "1 CamoEvo/Populations/";
+popFiles = getFileList(popLocalDir);
+
+for(i=0; i< popFiles.length; i++){
+popFiles[i] = replace(popFiles[i], "/", "");
+}
+
+
+Dialog.create("Populations");
+Dialog.addChoice("Choose a Population", popFiles)
+Dialog.show();
+
+
+PopulationNameString = Dialog.getChoice();
+
+survivalDIR = popLocalDir + PopulationNameString +"/";
+configFilePath=survivalDIR;
+tempString = "select=["+ configFilePath+"]";
+
+survivalList  =  getFileList(survivalDIR);
+
+Leng = lengthOf(survivalList);
+
+
+//GET DEFAULTS
+//------------------------------------------------------
+
+
+settingsFilePath = getDirectory("plugins") + "2 CamoReq/plotSettings.txt";
+if(File.exists(settingsFilePath) == 1){
+	settingsString=File.openAsString(settingsFilePath);	// open txt data file
+	defaultSettings=split(settingsString, "\n");
+} else { defaultSettings = newArray(
+
+"2",	// X interval
+"1/2",	// Y Ratio
+"1",	// Block Size
+"10",	// Column Spacing
+"10",	// Row Spacing
+"10"	// Gen Spacing
+ );  
+}
+
+
+
+for(i=0; i<Leng; i++) { 
+	if(endsWith(survivalList[i], "_survival.txt")!=1 && startsWith(survivalList[i], "generation")==1 ){
+
+		survivalArray = Array.concat(survivalArray, survivalList[i]);
+	}}
+
+
+//GET USER CHOICE
+//------------------------------------------------------
+
+numIndv = File.openAsString(survivalDIR + "generation_" +  0 + txt);
+numIndv = split(numIndv, "\n");
+numIndv = numIndv.length-1;
+
+
+RatioArray = Array.getSequence(numIndv);
+for(i=0;i<RatioArray.length;i++){
+RatioArray[i] = toString( parseInt(RatioArray[i])+1);
+}
+
+
+choiceArray = newArray ("Fitness", "Age", "Category");
+rotationArray = newArray ("none", "right", "left", "flip"); 
+
+Dialog.create("Choose Directory");
+		Dialog.addMessage("________________Choose Intervals___________________");
+		Dialog.addMessage("Select the Axis interval and proportion");
+		
+		Dialog.addNumber("Generation interval" , defaultSettings[0]);
+		Dialog.addChoice("Number of Individuals", RatioArray,  defaultSettings[1]); 
+		Dialog.addNumber("Block Size, Columns per Block",  defaultSettings[2]); 
+		Dialog.addNumber("Column Spacing",  defaultSettings[3], 0, 4, "px");
+		Dialog.addNumber("Row Spacing", defaultSettings[4], 0, 4, "px");
+		Dialog.addNumber("Generation Spacing",  defaultSettings[5], 0, 4, "px");
+		
+		Dialog.addNumber("Start", 0);
+		Dialog.addNumber("End",  survivalArray.length-2);
+		Dialog.addChoice("Rotation", rotationArray, "none");
+		
+		Dialog.addChoice("Ordering Method", choiceArray, "Fitness");
+		Dialog.addCheckbox("Show Individual Lables", 0);
+		Dialog.addCheckbox("Show Generation Lables", 0);
+		
+		
+		
+		
+		
+		
+Dialog.show();
+
+intervalGap = Dialog.getNumber();
+numIndividuals = parseFloat(Dialog.getChoice());
+blockSize = Dialog.getNumber();
+
+colSpace = Dialog.getNumber();
+rowSpace = Dialog.getNumber();
+genSpace = Dialog.getNumber();
+
+startPoint  = Dialog.getNumber();
+endPoint  = Dialog.getNumber();
+rotateCheck = Dialog.getChoice();
+
+rankCheck = Dialog.getChoice();
+IDLabCheck = Dialog.getCheckbox();
+genLabCheck = Dialog.getCheckbox();
+
+
+if(rankCheck == "Categegory" && endPoint == survivalArray.length-1){
+endPoint  = endPoint;
+} else {
+
+endPoint  = endPoint+1;
+
+}
+
+
+
+//SAVE USER CHOICE
+//------------------------------------------------------
+dataFile = File.open(settingsFilePath);
+
+	print(dataFile, intervalGap);
+	print(dataFile, numIndividuals);
+	print(dataFile, blockSize);
+	print(dataFile, colSpace);
+	print(dataFile, rowSpace);
+	print(dataFile, genSpace);
+	
+File.close(dataFile);
+
+
+
+
+//GET FIGURE WIDTH
+//------------------------------------------------------
+
+loopLeng = Math.ceil((endPoint-startPoint)/intervalGap);
+
+colWidth = (400+colSpace);
+
+
+figWidth = (blockSize*loopLeng*colWidth) + (genSpace * loopLeng) + (colSpace*2) + genSpace;
+
+
+//GET FIGURE HEIGHT
+//------------------------------------------------------
+
+if(IDLabCheck == 0){
+yVal = 400;
+} else {
+yVal = 500;
+}
+
+if(genLabCheck == 0){
+yBanner = 0;
+} else {
+yBanner = 250;
+}
+
+
+colHeight = yVal + rowSpace;
+
+targetLeng = numIndividuals / blockSize;
+
+figHeight = ((colHeight * targetLeng )) + rowSpace + yBanner;
+
+
+
+//GET FIGURE BLANK
+//------------------------------------------------------
+
+newImage("Phenotypes", "RGB black", figWidth, figHeight, 1);
+
+setBatchMode(true);
+
+
+//Loop add Phenotypes
+//------------------------------------------------------
+
+numGate = 0;
+blockMultiplier = -1;
+
+for (i=0; i<(loopLeng); i++){
+
+Number = startPoint + (i)*intervalGap;
+
+GenNum = survivalDIR + "generation_" + (Number) +"_survival"  + txt;
+
+GenName = "generation_" + (Number);
+
+PhenotypePath =  survivalDIR+"GenPat_"+ (Number) +"/";
+
+if(rankCheck =="Fitness"){
+
+//Rank Phenotypes
+//-------------------------
+
+				referenceString=File.openAsString(GenNum);	// open txt data file
+				referenceRows=split(referenceString, "\n");
+
+				IDarray =newArray();
+				FitnessArray =newArray();
+
+				for(j=1;j<referenceRows.length;j++){
+				tempArray = split(referenceRows[j], "\t");
+				IDarray=Array.concat(IDarray, tempArray [0]);
+				FitnessArray=Array.concat(FitnessArray, parseFloat( tempArray [1] ));
+				}
+
+
+
+				FitnessRanked = Array.rankPositions(FitnessArray);
+
+				index=Array.getSequence(FitnessRanked.length);
+
+				IDRankedarray = newArray();
+
+				IDSort=Array.copy(IDarray);
+
+				for(j=0;j<FitnessRanked.length;j++){
+
+				str = FitnessRanked[FitnessRanked.length-1-j];
+				IDRankedarray = Array.concat(IDRankedarray,IDarray[str]);
+
+				}
+}
+
+if(rankCheck =="Category"){
+
+//Get order from Genome
+//--------------------------------
+
+referenceString=File.openAsString(survivalDIR +GenName+".txt");	// open txt data file
+referenceRows=split(referenceString, "\n");
+
+IDarray =newArray();
+
+for(j=1;j<referenceRows.length;j++){
+tempArray = split(referenceRows[j], "\t");
+IDarray=Array.concat(IDarray, tempArray [0]);
+				}
+
+IDRankedarray = IDarray;
+
+
+}
+
+
+
+
+if(rankCheck =="Age"){
+
+//Rank Phenotypes
+//-------------------------
+
+				referenceString=File.openAsString(GenNum);	// open txt data file
+				referenceRows=split(referenceString, "\n");
+
+				IDarray =newArray();
+
+				for(j=1;j<referenceRows.length;j++){
+				tempArray = split(referenceRows[j], "\t");
+				IDarray=Array.concat(IDarray, tempArray [0]);
+				}
+
+
+				IDRankedarray =Array.sort(IDarray);
+
+				
+				
+}
+
+
+baseX = genSpace + (i*(400+colSpace)*(blockSize) + (i*genSpace));
+
+if(genLabCheck==1){
+
+textX = baseX + ( (400+colSpace)*blockSize*0.5);
+textY = 200;
+
+setJustification("center");
+setColor("white");
+setFont("SansSerif", 80);
+
+drawString("Generation " + Number,  textX , textY);
+
+}
+
+
+for(f=0; f < numIndividuals / blockSize; f++){
+
+for(j=0; j < (blockSize); j++){
+
+currentPhenotype = (f*blockSize) + j;
+currentPhenotype = IDRankedarray[currentPhenotype];
+open(PhenotypePath+ currentPhenotype + ".tif");
+
+if(rotateCheck == "left"){
+run("Rotate 90 Degrees Left");
+}
+
+if(rotateCheck == "right"){
+run("Rotate 90 Degrees Right");
+}
+
+
+if(rotateCheck == "flip"){
+run("Flip Vertically");
+}
+
+
+
+if(rankCheck =="Fitness"){
+labelString = "Rank " + (f*blockSize) + j +1;
+}
+
+if(rankCheck =="Age"){
+LableSplit = split(currentPhenotype,"_");
+AgeValue = LableSplit [0];
+
+
+MutValue = LableSplit [1];
+
+
+IDValue = LableSplit [2];
+
+
+labelString =  AgeValue +", "+ MutValue + ", "+ IDValue;
+}
+
+
+if(rankCheck =="Category"){
+LableSplit = split(currentPhenotype,"_");
+AgeValue = LableSplit [0];
+
+
+MutValue = LableSplit [1];
+
+
+IDValue = LableSplit [2];
+
+
+labelString =  AgeValue +", "+ MutValue + ", "+ IDValue;
+}
+
+
+
+
+
+run("Select All");
+if(j==0 && i==0){
+roiManager("add");
+}
+
+run("Copy");
+setPasteMode("Copy");
+
+close(currentPhenotype + ".tif");
+
+selectImage("Phenotypes");
+
+setPasteMode("Transparent-zero");
+roiManager("select", 0);
+
+
+pasteX = baseX + (j * (400+colSpace));
+pasteY = yBanner + (f * (yVal + rowSpace));
+Roi.move(pasteX, pasteY);
+
+run("Paste");
+
+
+if(IDLabCheck==1){
+
+textX = pasteX + 200;
+textY = pasteY +450;
+
+setJustification("center");
+setColor("white");
+setFont("SansSerif", 48);
+
+drawString(labelString ,  textX , textY);
+}
+
+
+}
+
+}
+
+}
+
+run("Select None");
+
+setTool("hand");
+
+nameCheck=0;
+num=0;
+while(nameCheck==0){
+renameStr = PopulationNameString+"_"+num;
+if(!isOpen(renameStr)){
+rename(PopulationNameString+"_plot");
+nameCheck=1;
+}
+num=num+1;
+}
+

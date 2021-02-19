@@ -1,0 +1,395 @@
+/*____________________________________________________________________
+
+	Title: Advanced Gif Maker
+	Authors:  George Hancock 
+	Date: 27/01/2021
+	
+.................................................................................................................
+
+Description:
+''''''''''''''''''''''''''''''''
+An experimental version of the evolution gif maker that allows you to make gifs with the populations background and with different sequences of individuals
+
+*/
+
+
+
+
+csv = ".csv";
+tif = ".tif";
+txt = ".txt";
+png = ".png";
+
+close("*");
+
+
+
+//GET FILE DIRECTORY
+//------------------------------------------------------
+
+Dialog.create("Choose Directory");
+		Dialog.addMessage("________________Choose Folder___________________");
+		Dialog.addMessage("Select directory with the fitness values of interest");
+Dialog.show();
+
+
+popLocalDir =getDirectory("Select photo folder you wish to use.");
+
+
+
+
+PopulationName = "";
+
+survivalDIR = popLocalDir + PopulationName+"/";
+configFilePath=survivalDIR;
+tempString = "select=["+ configFilePath+"]";
+
+survivalList  =  getFileList(survivalDIR);
+
+Leng = lengthOf(survivalList);
+
+survivalArray=newArray();
+
+for(i=0; i<Leng; i++) { 
+	if(endsWith(survivalList[i], "_survival.txt")==1 && startsWith(survivalList[i], "generation")==1 ){
+
+		survivalArray = Array.concat(survivalArray, survivalList[i]);
+	}}
+
+genomeArray=newArray();
+
+for(i=0; i<Leng; i++) { 
+	if(endsWith(survivalList[i], "_survival.txt")!=1 && startsWith(survivalList[i], "generation")==1 ){
+
+		genomeArray = Array.concat(genomeArray, survivalList[i]);
+	}}
+
+rowCheck = File.openAsString(survivalDIR+"generation_0_survival.txt");
+rowCount = split(rowCheck, "\n");
+rowCount = rowCount.length -1;
+
+
+
+
+
+choiceArray = newArray ("Rank", "Age", "Category");
+
+Dialog.create("Choose Settings");
+Dialog.addCheckbox("Use Bg Image", 0);
+Dialog.addChoice("Rank Order", choiceArray, "Rank");
+Dialog.addCheckbox("Show Individual Lables", 0);
+Dialog.addCheckbox("Show Generation lable", 0);
+Dialog.show();
+
+backgroundCheck = Dialog.getCheckbox();
+rankCheck = Dialog.getChoice();
+IDLabCheck = Dialog.getCheckbox();
+genLabCheck = Dialog.getCheckbox();
+
+
+
+
+//GET USER CHOICE
+//------------------------------------------------------
+
+RatioArray = newArray ("All", "3/4", "2/3", "1/2", "1/3", "1/4", "1");
+
+
+
+wScale = 1;
+hScale = 1;
+blockSize = rowCount/4;
+colSpace = 10;
+rowSpace = 10;
+startPoint  = 0;
+endPoint  = 1;
+
+
+//GET FIGURE WIDTH
+//------------------------------------------------------
+
+interval = wScale;
+
+colWidth = (400+colSpace);
+
+figWidth = (blockSize)*colWidth;
+
+
+
+//GET FIGURE HEIGHT
+//------------------------------------------------------
+GenNum = survivalDIR + "generation_" +  0 + txt;
+referenceString=File.openAsString(GenNum);	// open txt data file
+referenceRows=split(referenceString, "\n");
+
+targetLeng = ((referenceRows.length-1)* hScale)+1;
+
+colHeight = 500 + rowSpace;
+
+figHeight =    ( (rowCount / (blockSize) )  )*colHeight;
+
+
+titleSize = 80;
+titleGap = 60;
+titleSpace = titleSize +titleGap ;
+
+
+//GET FIGURE BLANK
+//------------------------------------------------------
+
+
+
+newImage(PopulationName +" Evolution gif", "RGB black", figWidth, figHeight+titleSpace +titleGap , 1);
+setBatchMode(true);
+
+if( backgroundCheck ==1){
+if(File.exists(survivalDIR + "Backgrounds/0.jpg")){
+open(survivalDIR + "Backgrounds/0.jpg");
+}
+
+if(File.exists(survivalDIR + "Backgrounds/0.png")){
+open(survivalDIR + "Backgrounds/0.png");
+}
+
+run("Scale...", "x=2 y=2 width=4920 height=4080 interpolation=Bilinear average create");
+rename("Background");
+run("Copy");
+setPasteMode("Copy");
+selectImage(PopulationName +" Evolution gif");
+run("Paste");
+		if(genLabCheck==1){
+		makeRectangle(0,0,figWidth, figHeight/10);
+		run("Subtract...", "value=120");
+}
+}
+selectImage(PopulationName +" Evolution gif");
+setJustification("center");
+setColor("white");
+setFont("SansSerif", titleSize);
+if(genLabCheck==1){
+drawString("Generation 0",  figWidth/2, titleSpace );
+}
+
+//Loop add slices
+//------------------------------------------------------
+for(i=0; i<survivalArray.length-1; i++){
+run("Add Slice");
+
+		if( backgroundCheck ==1){
+		run("Paste");
+		if(genLabCheck==1){
+		makeRectangle(0,0,figWidth, figHeight/10);
+		run("Subtract...", "value=120");
+		run("Select None");
+		}
+		}
+if(genLabCheck==1){
+drawString("Generation "+i+1,  figWidth/2, titleSpace);
+}
+}
+
+if( backgroundCheck ==1){
+rename(PopulationName +" Evolution gif");
+}
+
+
+//Loop add Phenotypes
+//------------------------------------------------------
+
+
+numGate = 0;
+blockMultiplier = -1;
+
+if(rankCheck =="Rank" || rankCheck =="Age"){
+loopLength=survivalArray.length;
+}
+
+
+if(rankCheck =="Category"){
+loopLength=genomeArray.length;
+}
+
+for (i=0; i<loopLength; i++){
+
+setSlice(i+1);
+
+Number = i;
+
+GenNum = survivalDIR + "generation_" + (Number) +"_survival"  + txt;
+
+GenName = "generation_" + (Number);
+
+PhenotypePath =  survivalDIR+"GenPat_"+ (Number) +"/";
+
+if(rankCheck =="Rank"){
+
+//Rank Phenotypes
+//-------------------------
+
+				referenceString=File.openAsString(GenNum);	// open txt data file
+				referenceRows=split(referenceString, "\n");
+
+				IDarray =newArray();
+				FitnessArray =newArray();
+
+				for(j=1;j<referenceRows.length;j++){
+				tempArray = split(referenceRows[j], "\t");
+				IDarray=Array.concat(IDarray, tempArray [0]);
+				FitnessArray=Array.concat(FitnessArray, parseFloat( tempArray [1] ));
+				}
+
+
+
+				FitnessRanked = Array.rankPositions(FitnessArray);
+
+				index=Array.getSequence(FitnessRanked.length);
+
+				IDRankedarray = newArray();
+
+				IDSort=Array.copy(IDarray);
+
+				for(j=0;j<FitnessRanked.length;j++){
+
+				str = FitnessRanked[FitnessRanked.length-1-j];
+				IDRankedarray = Array.concat(IDRankedarray,IDarray[str]);
+
+				}
+}
+
+if(rankCheck =="Category"){
+
+//Get order from Genome
+//--------------------------------
+
+referenceString=File.openAsString(survivalDIR +GenName+".txt");	// open txt data file
+referenceRows=split(referenceString, "\n");
+
+IDarray =newArray();
+
+for(j=1;j<referenceRows.length;j++){
+tempArray = split(referenceRows[j], "\t");
+IDarray=Array.concat(IDarray, tempArray [0]);
+				}
+
+IDRankedarray = IDarray;
+
+
+}
+
+
+
+
+if(rankCheck =="Age"){
+
+//Rank Phenotypes
+//-------------------------
+
+				referenceString=File.openAsString(GenNum);	// open txt data file
+				referenceRows=split(referenceString, "\n");
+
+				IDarray =newArray();
+
+				for(j=1;j<referenceRows.length;j++){
+				tempArray = split(referenceRows[j], "\t");
+				IDarray=Array.concat(IDarray, tempArray [0]);
+				}
+
+
+				IDRankedarray =Array.sort(IDarray);
+
+				
+				
+}
+
+
+
+
+
+
+targetX = 400;
+xText = targetX + targetX/2;
+
+for(f=0; f < rowCount / blockSize; f++){
+
+
+	pasteY = titleSpace + titleGap + (f * (500 + rowSpace) );
+	labelY = pasteY+460;
+if(IDLabCheck==1){
+if(backgroundCheck==1){
+makeRectangle(0, labelY-60,figWidth, 80);
+run("Subtract...", "value=120");
+}
+}
+
+for(j=0; j < (blockSize); j++){
+
+currentPhenotype = (f*blockSize) + j;
+currentPhenotype = IDRankedarray[currentPhenotype];
+open(PhenotypePath+ currentPhenotype + ".tif");
+
+run("Select All");
+
+run("Copy");
+setPasteMode("Copy");
+
+close(currentPhenotype + ".tif");
+
+selectImage(PopulationName +" Evolution gif");
+
+pasteX = j * (400+colSpace);
+labelX =  pasteX+200;
+
+
+if(rankCheck =="Rank"){
+labelString = "Rank " + (f*blockSize) + j +1;
+}
+
+if(rankCheck =="Age"){
+LableSplit = split(currentPhenotype,"_");
+AgeValue = LableSplit [0];
+AgeValue = replace(AgeValue,"Gen", "");
+
+MutValue = LableSplit [1];
+MutValue = replace(MutValue ,"Mut", "");
+
+labelString = "Gen " + AgeValue +", Mut " +MutValue ;
+}
+
+
+if(rankCheck =="Category"){
+labelString = replace(currentPhenotype,".tif","");
+}
+
+
+
+setPasteMode("Transparent-zero");
+makeRectangle(pasteX,pasteY,400,400);
+run("Paste");
+
+setJustification("center");
+setColor("white");
+setFont("SansSerif", 42);
+
+if(IDLabCheck==1){
+drawString(labelString ,  labelX , labelY);
+}
+
+}
+}
+
+
+}
+
+run("Select None");
+
+setBatchMode("Show");
+setTool("hand");
+
+run("Maximize");
+
+ run("Animation Options...", "speed="+0.5);
+			doCommand("Start Animation");
+
+
+
+

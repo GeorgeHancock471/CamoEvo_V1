@@ -1,0 +1,134 @@
+ close("*");
+
+v=0;
+
+
+shellL =94;
+shellA= 0.0;
+shellB=0.0;
+
+ppLmin = -85;
+bvLmin = -65;
+
+BvA1 = -18;
+BvA2 = -38;
+	BvB1 = -16;
+	BvB2 = -2;
+
+PpA1 = 25;
+PpA2 = 35;
+	PpB1 =45;
+	PpB2 = 10;
+
+canvasW=500;
+interval=1;
+
+
+
+newImage("Egg_CIE_Space", "32bit white", canvasW*interval, canvasW, 3);
+
+//L*
+//--------------
+setSlice(1);
+for(i=0; i<canvasW; i++){
+for(j=0; j<canvasW; j++){
+
+bg_Dp = 1- j /canvasW;
+bg_Pi = i /canvasW;
+
+DepositionBg = (bg_Dp);
+RatioBg = (bg_Pi);
+
+if(DepositionBg>1){
+DepositionBg =1;
+}
+
+	BvAmount =  Math.pow((RatioBg*1),0.5) * DepositionBg*1.2;
+	PpAmount=  Math.pow(((1-RatioBg)*1),1.2) * DepositionBg*1.2;
+	 
+	bgL = ( (BvAmount )*bvLmin ) +  ( Math.pow(PpAmount,1)*ppLmin );
+	bgL = shellL+ bgL;
+
+valStr = bgL;
+
+setPixel(i,j,valStr);
+}
+}
+
+
+//A*
+//--------------
+setSlice(2);
+for(i=0; i<canvasW; i++){
+for(j=0; j<canvasW; j++){
+
+bg_Dp = 1- j /canvasW;
+bg_Pi = i /canvasW;
+
+DepositionBg = (bg_Dp);
+RatioBg = (bg_Pi);
+
+	RatioBgA = Math.pow(RatioBg,0.8);
+	BvAmount =  Math.pow((RatioBgA),1) ;
+	PpAmount=  Math.pow((1-RatioBgA),1) ;
+
+Ashift = Math.pow(DepositionBg,2);
+BvA = (BvB2*Ashift) + (BvA1*(1-Ashift));
+PpA = (PpA2*Ashift) + (PpA1*(1-Ashift));
+
+
+	bgA = ( Math.pow(BvAmount,0.8)*BvA ) +  ( Math.pow(PpAmount,1)*PpA);
+	bgA = shellA + bgA;
+	bgA = bgA*Math.pow(DepositionBg,0.5);
+
+valStr = bgA;
+
+setPixel(i,j,valStr);
+
+}
+}
+
+
+//B*
+//--------------
+setSlice(3);
+for(i=0; i<canvasW; i++){
+for(j=0; j<canvasW; j++){
+
+bg_Dp = 1- j /canvasW;
+bg_Pi = i /canvasW;
+
+DepositionBg = (bg_Dp);
+RatioBg = (bg_Pi);
+
+	RatioBgB = Math.pow(RatioBg,4);
+	BvAmount =  Math.pow((RatioBgB),1) ;
+	PpAmount=  Math.pow((1-RatioBgB),1) ;
+
+Bshift = Math.pow(DepositionBg,3);
+BvB = (BvB2*Bshift) + (BvB1*(1-Bshift));
+PpB = (PpB2*Bshift) + (PpB1*(1-Bshift));
+
+	bgB =  ( Math.pow(BvAmount,1)*BvB )+ (( Math.pow(PpAmount,0.4)*PpB ));
+	bgB = shellB + bgB;
+
+	bgB = bgB*Math.pow(RatioBg+0.000001,0.01)*Math.pow(DepositionBg,0.5);
+
+valStr = bgB;
+
+setPixel(i,j,valStr);
+}
+}
+
+
+run("CIELAB 32Bit to RGB24 smooth");
+selectImage("Output");
+rename("Egg_Space");
+close("Egg_CIE_Space");
+
+
+if(nImages>1)
+run("Images to Stack", "name=Stack title=[] use");
+
+
+

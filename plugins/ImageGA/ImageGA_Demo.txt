@@ -1,0 +1,116 @@
+/*____________________________________________________________________
+
+	Title: ImageGA Demo
+	Authors:  George Hancock 
+	Date: 27/01/2021
+	
+.................................................................................................................
+
+Description:
+''''''''''''''''''''''''''''''''
+This code allows the user to run a demo of ImageGA using one of the existing fitness calculators.
+
+
+*/
+
+
+
+// (1) Run the Interface
+//------------------------------------------------------------------------------------------------------------------------
+
+
+run("ImageGA Interface");
+
+
+
+
+// (2) Select Calculator
+//------------------------------------------------------------------------------------------------------------------------
+FitCalculators= newArray();
+
+FitCalcDirect = getDirectory("plugins") + "ImageGA/Fitness Calculators/";
+
+	if(File.exists(FitCalcDirect ) == 0) {
+		File.makeDirectory(FitCalcDirect );
+	}
+
+
+FitCalcList=getFileList(FitCalcDirect);
+
+for(i=0; i<FitCalcList.length; i++) { // list all .txt files
+
+	if(endsWith(FitCalcList[i], ".txt")==1)
+
+		FitCalculators = Array.concat(FitCalculators, FitCalcList[i]);
+}
+
+Dialog.create("Choose a Fitness Calculator");
+	Dialog.addMessage("________________Choose Calculator___________________");
+		Dialog.addMessage("Select the calculator from the 'Fitness Calculators' directory you would like to use.");
+		Dialog.addMessage("If you would like to use a Calculator independent from Image J, then select 'No Calculator'");
+		Dialog.addChoice("", FitCalculators, FitCalculators[0]);
+	Dialog.show();
+
+FitnessCalculator = Dialog.getChoice();
+
+FitnessCalculator = replace(FitnessCalculator, ".txt", "");  
+FitnessCalculator = replace(FitnessCalculator, "_", " ");  
+
+=
+
+
+
+
+// (3) Get Population Location
+//------------------------------------------------------------------------------------------------------------------------
+settingsFilePath = getDirectory("plugins") + "ImageGA/RequisitFunctions/PopulationLocation.txt";
+
+
+if(File.exists(settingsFilePath) == 1){
+	settingsString=File.openAsString(settingsFilePath);	// open txt data file
+	defaultSettings=split(settingsString, "\n");
+} 
+
+CheckDirectory = defaultSettings[0];
+print(CheckDirectory);
+
+
+
+
+
+// (4) Run LITE and Calculator until no new files are made.
+//------------------------------------------------------------------------------------------------------------------------
+
+		x=1;
+		y1= getFileList(CheckDirectory);
+		y1 = y1.length;
+
+		y2= getFileList(CheckDirectory);
+		y2 = y2.length;
+
+while(x==1){
+
+run(FitnessCalculator);
+
+DirectoryString= "select=[" + CheckDirectory+ "]";
+
+run("ImageGA Algorithm", DirectoryString);
+
+		y1= getFileList(CheckDirectory);
+		y1 = y1.length;
+
+	if(y1>y2){
+
+		y2= getFileList(CheckDirectory);
+		y2 = y2.length;
+
+	} else {
+
+	x=0;
+
+	}
+
+
+}
+
+run("Fitness Plotter", DirectoryString);

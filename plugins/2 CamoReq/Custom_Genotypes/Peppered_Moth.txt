@@ -1,0 +1,2 @@
+ID	speckling_intensity	speckling_sigma	pttn_x	pttn_y	pttn_width	pttn_aspect_ratio	pttn_angle	pttn_coverage	pttn_CS_sigma	pttn_CS_height	pttn_CS_angle	EE_intensity	EE_sigma	unit_C_0	pttn_L	pttn_A	pttn_B	unit_C_1	top_L	top_A	top_B	unit_C_2	bottom_L	bottom_A	bottom_B	unit_C_N	col_sigma	col_height	specular_pttn	specular_bkg
+Test	0.9000	0.0100	0.7000	0.4700	0.7000	0.4800	0.1300	0.1800	1	0.5800	0	0.4000	0.2000	0.8540	0.3000	0.4000	0.6000	0.6110	0.9500	0.4500	0.5800	0.8973	0.9500	0.4500	0.5800	0.6562	0.1909	0.2265	0.3792	0.4232

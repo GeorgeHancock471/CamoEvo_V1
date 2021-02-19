@@ -1,0 +1,3567 @@
+
+/*_______________________________________________________________________________________________________________
+
+	Title: ImageGA Algorithm
+	Authors:  George Hancock 
+	Date: 06/01/2021
+	
+.................................................................................................................
+
+Description:
+''''''''''''''''''''''''''''''''
+This is the heart and soul for how ImageGA works and is used to generate the new populations.
+
+*/
+
+
+setOption("ShowRowNumbers", false);
+
+
+
+
+
+
+/*
+..........................................................................................................................................
+
+															Setup
+
+..........................................................................................................................................
+
+*/
+
+
+
+//===========================================================================
+//Get the File Path
+//============================================================================
+
+Dialog.create("Choose Directory");
+		Dialog.addMessage("________________Choose Folder___________________");
+		Dialog.addMessage("Select directory you would like your Generations to be stored.");
+	Dialog.show();
+
+
+imageDIR = getDirectory("Select folder you wish to use.");
+configFilePath=imageDIR;
+tempString = "select=["+ configFilePath+"]";
+
+
+PopulationLocation = getDirectory("plugins") + "ImageGA/RequisitFunctions/PopulationLocation.txt";
+
+
+// SAVE PATH
+
+dataFile = File.open(PopulationLocation);
+
+	print(dataFile, imageDIR);
+
+File.close(dataFile);
+
+settingsFilePath = getDirectory("plugins") + "ImageGA/RequisitFunctions/AlgorithmSettings.txt";
+
+//===========================================================================
+// Make file names easier to handle.
+//===========================================================================
+
+csv = ".csv";
+tif = ".tif";
+txt = ".txt"'
+png = ".png"
+
+
+//===========================================================================
+// FUNCTIONS
+//==========================
+setOption("ShowRowNumbers", false);
+setOption("ShowRowIndexes", false);
+//===========================================================================
+
+// TestPoint
+//---------------------------------------------------
+// Allows you to obtain the index of a Value within an Array.
+
+function TestPoint(Title) {
+Dialog.createNonBlocking("TestPoint");
+Dialog.createNonBlocking("Did " + Title + " work?");
+Dialog.show();
+
+}
+
+
+// Index
+//---------------------------------------------------
+// Allows you to obtain the index of a Value within an Array.
+
+  function index(a, value) {
+      for (i=0; i<a.length; i++)
+          if (a[i]==value) return i;
+      return -1;
+  }
+
+// Obtain SubArray
+//---------------------------------------------------
+// Allows you to obtain a SubArray of a given Name and Length, where a is the array and b is the original number of rows.
+
+ function subArray(a, value, b) {
+	IndexLab = index(a, value);
+	Start = IndexLab + 1;
+	End = IndexLab  + b;
+	return Array.slice(a, Start, End);
+}
+
+// Obtain Table Names Array
+//---------------------------------------------------
+// Allows you to obtain an array of all the table column names
+
+ function getColumnNames(name) {
+	selectWindow(name);
+	Table.showRowNumbers(false);
+	name = Table.headings;
+	name = split(name, "\t");
+	Table.showRowNumbers(false);
+	return name; 
+}
+
+// Obtain Row Length
+//---------------------------------------------------
+// Allows you to obtain the length of a row in a table.
+
+ function getRowLength(name) {
+
+	Nam = getColumnNames(name);
+	strCol = Table.getColumn(Nam[0]);
+	length = lengthOf (strCol);
+	return length; 
+}
+
+
+
+//Table to Array
+//--------------------------------------------------
+// Converts a Table into a Super Array, dividing them by the column titles.
+
+ function tableArrayConvert(TableName) {
+	selectWindow(TableName);
+	Table.showRowNumbers(false);
+	ColNams = Table.headings;
+	ColNams = split(ColNams, "\t");
+
+	Tp = newArray();
+	
+	 for (i=0; i<ColNams.length; i++){
+
+	Tm = ColNams[i];
+
+	Tp2 = newArray(Tm);
+
+	Tp3 = Table.getColumn(Tm);
+
+	Tp = Array.concat(Tp, Tp2, Tp3);
+	
+	}
+        	
+	Table.showRowNumbers(false);
+	return Tp;
+	
+	}
+
+//Rotate Super Array
+//--------------------------------------------------
+
+function rotateSuperArray (a, Titles) {
+
+	M1 = Titles[1];
+
+	labelA = Titles[0];
+
+	M3 =  index(a, M1)-1;
+	
+	b=Array.copy(a);
+
+	for (i=0; i<Titles.length; i++){
+		b = Array.deleteValue(b, Titles[i]);
+	}
+
+	arrTemp = newArray();
+
+		for (i=0; i<M3; i++){
+
+		arrTemp2 = newArray();
+	
+		for(j=0; j<Titles.length; j++){
+
+		mod = i +(j*M3);
+
+		arrTemp2 = Array.concat(arrTemp2, b[mod]);
+
+			}
+
+			labelB =labelA + i;
+			labelC= newArray(labelB);
+
+			arrTemp = Array.concat(arrTemp, arrTemp2);
+
+
+			} 
+	
+	return arrTemp;
+	
+			}
+
+
+//Reverse Rotate Super Array
+//--------------------------------------------------
+
+// Undoes the rotation of the super Array.
+
+function rotateRevSuperArray (a, Titles, rowLength) {
+	
+		rowL= rowLength;
+		
+		titleL= Titles.length;
+	
+	//Array.show(a);
+
+	arrTemp = newArray();
+
+		for (i=1; i<titleL; i++){
+
+		arrTemp2 = newArray("Nan");
+	
+		for(j=0; j<rowL; j++){
+
+			mod = i +(j*(titleL));
+
+			arrTemp2 = Array.concat(arrTemp2, a[mod]);
+
+			}
+
+			arrTemp2[0] = Titles[i];
+
+			//Array.print(arrTemp2);
+
+			arrTemp = Array.concat(arrTemp,arrTemp2);
+
+
+			} 
+
+	arrTemp3 = newArray();
+
+	for (i=0; i<rowL; i++){
+
+		Mult = i*(Titles.length);
+
+		Nam = a[Mult];
+		
+		arrTemp3 = Array.concat(arrTemp3, Nam );
+
+					}
+
+	
+	arrTemp3 = Array.concat(Titles[0], arrTemp3);
+
+	arrTemp = Array.concat(arrTemp3, arrTemp);
+	
+	return arrTemp;
+	
+			}
+
+
+//Rotate Table
+//--------------------------------------------------
+
+// Flips the axis of a Table.
+
+function tableRotateVertical(TableOld, TableNew) {
+
+	Table.create(TableNew);
+	Table.showRowNumbers(false);
+
+	arrRow = getColumnNames(TableOld);
+
+	strCol = getRowLength(TableOld);
+
+	outputArray = newArray(arrRow.length-1);
+
+	for(j=0; j<strCol; j++){
+
+	selectWindow(TableOld);
+
+	for(k=1; k<arrRow.length; k++){
+			T = k;
+			CN = arrRow[T];
+			outputArray[k-1] = getResult(CN, j);
+		}
+
+	selectWindow(TableNew);
+	
+	Label = arrRow[0] + "_" +  (j);
+
+	Table.setColumn(Label, outputArray);
+
+	}
+	
+	}
+
+
+//Super Array to Table
+//--------------------------------------------------
+// Converts a Super Array back into a table using the Array of original titles.
+
+function tableArrayRevert (TableName, a, Titles) {
+
+	Table.create(TableName);
+	Table.showRowNumbers(false);
+
+	M1 = index(a, Titles[0]);
+
+	M2 = index(a, Titles[1]);
+
+	M3 = M2 - M1;
+
+	for (i=0; i<Titles.length; i++){
+
+	columnName = Titles[i];
+	
+	array = subArray(a, columnName, M3);
+
+	Table.setColumn(columnName, array);
+
+	}
+
+}
+
+
+
+
+//===========================================================================
+// Load Previous values
+//===========================================================================
+settingsFilePath = imageDIR + "/AlgorithmSettings.txt";
+if(File.exists(settingsFilePath) == 1){
+	settingsString=File.openAsString(settingsFilePath);	// open txt data file
+	defaultSettings=split(settingsString, "\n");
+} 
+
+if(File.exists(settingsFilePath) != 1){
+	settingsFilePath = getDirectory("plugins") + "ImageGA/RequisitFunctions/AlgorithmSettings.txt";
+if(File.exists(settingsFilePath) == 1){
+	settingsString=File.openAsString(settingsFilePath);	// open txt data file
+	defaultSettings=split(settingsString, "\n");
+} else {  defaultSettings = newArray(
+
+"0", 				// Sex
+
+"Create Custom", 	// Use Template 
+"24", 					// Population Size
+"random", 				// Population Genotype
+
+"1/2", 				// Deletion Pool	
+"1/2", 				// Mating Pool
+
+"10",				// Number of Generations
+
+"0.001",			// Offspring Mutation Rate
+"0.005",			// Non-Breed Mutation Rate
+
+
+"normal",			// Offspring Mutation Distribution
+"normal",			// Non-Breed Mutation Distribution
+
+"4",				// Offspring Mutation Str (uniform)
+"4",				// Non-Breed Mutation Str 
+
+"8",				// Offspring Mutation Str (normal)
+"8",				// Non-Breed Mutation Str 
+
+"8",				// Offspring Mutation Str (poisson)
+"8",				// Non-Breed Mutation Str 
+
+"Two Point", 			// Crossover Type 
+"1",					// Crossover Probability
+"Incomplete",			// Recombination Completeness
+
+
+"random", 			// Mating System
+"1.1", 					// ALPHA
+"1.9", 					// BETA
+
+"0", 				// Offspring Inversion Mutation Rate
+"0", 				// Non-Breed Inversion Mutation Rate
+
+"0", 				// Offspring Duplication Mutation Rate
+"0", 				// Non-Breed Duplication Mutation Rate
+
+"0", 				// Offspring Scramble Mutation Rate
+"0", 				// Non-Breed Scramble Mutation Rate
+
+"0", 				// Offspring Unit Duplication Mutation Rate
+"0", 				// Non-Breed Unit Duplication Mutation Rate
+
+
+"none", 			// Crowd Operator
+"0.9", 					// DELTA
+"4"  );					// Crowd Number Removed
+} 
+}
+
+ogDefaultSettings = Array.copy(defaultSettings);
+
+
+
+
+//===========================================================================
+// Assign Algorithm Variables
+//===========================================================================
+
+//----------------------------------------------------
+
+SexType = parseFloat(defaultSettings[0]);
+
+popChoice =  defaultSettings[1];
+ popSizeChoice =  defaultSettings[2];
+  popTypeChoice =  defaultSettings[3];
+
+//----------------------------------------------------
+
+unitChoice =  defaultSettings[4];
+
+DeletionSize =  parseFloat(defaultSettings[5]);
+
+BreedingSize = parseFloat(defaultSettings[6]);
+
+
+//----------------------------------------------------
+numberGenerations =  defaultSettings[7];
+
+mutRateOffs =  parseFloat(defaultSettings[8]);
+mutRateT2 = parseFloat(defaultSettings[9]);
+
+mutDistOffs =  defaultSettings[10];
+mutDistT2 =  defaultSettings[11];
+
+
+//----------------------------------------------------
+
+if(mutDistOffs == "uniform") {
+Offs = 0;
+OffSet = 12;
+}
+if(mutDistOffs == "normal") {
+Offs = 1;
+OffSet = 14;
+}
+if(mutDistOffs == "poisson") {
+Offs = 2;
+OffSet = 16;
+}
+
+if(mutDistT2 == "uniform") {
+Tier2 = 0;
+Tier2Set = 13;
+}
+if(mutDistT2 == "normal") {
+Tier2 = 1;
+Tier2Set = 15;
+}
+if(mutDistT2 == "poisson") {
+Tier2 = 2;
+Tier2Set = 17;
+}
+
+
+mutStrengthOffs = parseFloat(defaultSettings[OffSet]);
+mutStrengthT2 =  parseFloat(defaultSettings[Tier2Set]);
+
+
+mutStrengthOffs1 = defaultSettings[12];
+mutStrengthOffs2 = defaultSettings[14];
+mutStrengthOffs3 = defaultSettings[16];
+
+mutStrengthT21 = defaultSettings[13];
+mutStrengthT22 = defaultSettings[15];
+mutStrengthT23 = defaultSettings[17];
+
+
+
+//----------------------------------------------------
+
+crossOver = defaultSettings[18];
+crossOverProb = parseFloat(defaultSettings[19]);
+crossOverComplete =  defaultSettings[20];
+
+if (crossOver == "random") 	{
+crossSet1 = 0;
+				} else { 
+				crossSet1 = 1;		 
+				}
+
+if (crossOver == "Two Point") {
+crossSet2 = 1;
+				} else {
+				crossSet2 = 0;                    
+				}
+
+//----------------------------------------------------
+
+MatingSystemChoice =  defaultSettings[21];
+ALPHA =  defaultSettings[22];
+BETA =  defaultSettings[23];
+
+//----------------------------------------------------
+
+inversionRateOffs =  defaultSettings[24];
+inversionRateT2=  defaultSettings[25];
+
+duplicationRateOffs =  defaultSettings[26];
+duplicationRateT2=  defaultSettings[27];
+
+scrambleRateOffs =  defaultSettings[28];
+scrambleRateT2 =  defaultSettings[29];
+
+unitRateOffs =  defaultSettings[30];
+unitRateT2 =  defaultSettings[31];
+
+
+
+inversionRate =  0;
+duplicationRate =  0;
+applicationChoice = 0;
+
+
+
+//------------------------------------------
+
+crowdOperator = defaultSettings[32];
+crowdThreshold = parseFloat(defaultSettings[33]);
+crowdNumber = parseFloat(defaultSettings[34]);
+DELTA = crowdThreshold;
+
+
+//------------------------------------------
+
+
+VoteMate = newArray();
+
+GenLeng = numberGenerations;
+
+Adaptive=0;
+
+
+
+
+
+/*
+..........................................................................................................................................
+
+															Run Algorithm
+
+..........................................................................................................................................
+
+*/
+
+
+
+
+
+
+//===========================================================================
+// 0) Population Details
+//===========================================================================
+//Import values using the youngest population
+
+//---------------------------------------------------------------------------
+
+
+settingsFilePath = getDirectory("plugins") + "ImageGA/RequisitFunctions/PopulationLocation.txt";
+
+
+if(File.exists(settingsFilePath) == 1){
+	settingsString=File.openAsString(settingsFilePath);	// open txt data file
+	defaultSettings=split(settingsString, "\n");
+} 
+
+
+CheckDirectory = defaultSettings[0];
+GeneratList  =  getFileList(CheckDirectory);
+GeneratArray = newArray();
+GenSurvArray  = newArray();
+
+for(i=0; i<GeneratList.length; i++) { // list all .txt files
+
+	if(startsWith(GeneratList[i], "generation")==1 && endsWith(GeneratList[i], "_survival.txt")!=1){
+		GeneratArray = Array.concat(GeneratArray, GeneratList[i]);
+	}	
+
+	if(endsWith(GeneratList[i], "_survival.txt")==1){
+		GenSurvArray = Array.concat(GenSurvArray, GeneratList[i]);
+	}											
+		
+}
+
+
+if(GenSurvArray.length==GeneratArray.length){
+
+ArrayLeng = lengthOf(GeneratArray);
+A=ArrayLeng-1;
+
+AI = parseInt(A);
+
+if(AI>=GenLeng){
+//print("All Generations Completed!");
+}else{
+
+GenNum = configFilePath + "generation_" + AI + txt;
+GenNum2 = configFilePath + "generation_" + (AI+1) + txt;
+
+GenName = "generation_" + AI + txt;
+GenName2 = "generation_" + (AI+1) + txt;
+
+
+
+
+//===========================================================================
+// 1) Wait for file to be made.
+//===========================================================================
+// For some programs if the fitness calculator is handled outside imageJ 
+// you may want it to sit idle waiting for a survival file.
+// This section allows it imageGA for wait for up to 30 days.
+
+//---------------------------------------------------------------------------
+
+DAY = 86400;
+INF =  30 * DAY * 1000;
+
+for ( sv=0; sv<INF; sv++ ) { 
+
+
+if(File.exists(GenNum) == 1)	{
+					
+					sv = INF;
+					
+					} else {
+					
+					wait (10);
+
+					}
+
+			}
+
+
+
+oN = GenName;
+gN = GenName2;
+nPth = GenNum2;
+
+
+//===========================================================================
+// 2) Create Arrays
+//===========================================================================
+// This section creates the arrays used for survival, breeding, mutation etc.
+//---------------------------------------------------------------------------
+
+
+//____________________________________________________________________
+
+// Work Out How Many to Delete
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+GenerationString=File.openAsString(GenNum);			// open txt data file
+GenerationRows=split(GenerationString, "\n");
+
+	Column_Titles = GenerationRows[0];
+	CT=split(Column_Titles, "\t");
+	F = lengthOf(CT);
+	
+VarLeng = GenerationRows.length-1;					//How many individuals there are.
+
+
+if(unitChoice == "integer"){ 						//Deletion Number if using the integer system.
+lopLeng = DeletionSize;
+BreedNum = BreedingSize/VarLeng;
+}
+
+
+if(unitChoice == "percentage"){ 					//Deletion Number if using the percentage system.
+lopLeng =  parseInt(VarLeng * DeletionSize/100);
+BreedNum = parseFloat(BreedingSize/100);
+
+
+}
+
+
+
+
+Genotype_IDs = newArray();
+for(X=1; X<GenerationRows.length; X++){
+Temp = split(GenerationRows[X], "\t");
+Genotype_IDs = Array.concat(Genotype_IDs, Temp);
+}
+
+
+
+//____________________________________________________________________
+
+// Wait for Survival File to be Made.
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+
+
+configFilePath2 = replace(GenNum, txt, "_survival.csv");  // Opens Fitness Table
+
+configFilePath2a = replace(GenNum, txt, "_survival.txt");  // Opens Fitness Table
+
+DAY = 86400;
+INF =  30 * DAY *1000;
+
+for ( sv=0; sv<INF; sv++ ) { 
+
+wait (10);
+
+SurvivalPath1 = configFilePath2;
+
+if(File.exists(SurvivalPath1) == 1)	{ 										//check for .csv survival
+					
+					sv = INF;
+
+					PathType="csv";
+
+					survivalName = replace(GenName, txt, "_survival.csv");  // Opens Fitness Table
+					
+					}
+
+
+SurvivalPath2 = configFilePath2a;
+
+
+if(File.exists(SurvivalPath2) == 1)	{ 										//check for .txt survival
+
+					sv = INF;
+
+					PathType="txt";
+
+					survivalName = replace(GenName, txt, "_survival.txt");  // Opens Fitness Table
+				
+
+					}
+}
+
+//print ("Survival Document has been Uploaded, Next Generation Creation, Commencing");
+
+wait(10);
+
+
+if(PathType == "csv"){
+
+open( configFilePath2);
+
+Table.rename(survivalName,"survival_table");  //-------------RENAME
+
+selectWindow("survival_table"); 
+
+Table.showRowNumbers(false);
+
+T = Table.getColumn("fitness"); // Ranks Fitness
+IDlabels = Table.getColumn("ID");
+
+U = Array.rankPositions(T);
+
+if(isOpen("survival_table")){
+selectWindow("survival_table"); //-------------Cull the uneeded tables.
+		run("Close");
+		}
+
+}
+
+
+
+
+
+if(PathType == "txt"){
+
+SurvivalString = File.openAsString( configFilePath2a);
+Rows = split(SurvivalString, "\n");
+
+arrayFit = newArray();
+arrayID = newArray();
+
+for(X=1; X< Rows.length; X++){
+row = split(Rows[X], "\t");
+
+arrayID = Array.concat(arrayID, row[0]);
+arrayFit = Array.concat(arrayFit, parseFloat(row[1]));
+}
+
+T = arrayFit ; // Ranks Fitness
+IDlabels = arrayID;
+
+U = Array.rankPositions(T);
+
+
+}
+
+
+
+//____________________________________________________________________
+
+// Rank Individuals by Fitness
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+IDRanked = newArray();
+IDmaxRank = -1; 				// Sets the min ID
+
+
+
+
+
+// Rank if there are Males and Females
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+if(SexType==1){		//Rank if sex(M&G) is used
+arrayM_ID = newArray();
+arrayF_ID = newArray();
+
+arrayM_Fit = newArray();
+arrayF_Fit = newArray();
+
+for(X=1; X< Rows.length; X++){
+row = split(Rows[X], "\t");
+
+
+if(endsWith(row[0], "_M")==1){
+arrayM_ID = Array.concat(arrayM_ID, row[0]);
+arrayM_Fit = Array.concat(arrayM_Fit, parseFloat(row[1]));
+}
+if(endsWith(row[0], "_F")==1){
+arrayF_ID = Array.concat(arrayF_ID, row[0]);
+arrayF_Fit = Array.concat(arrayF_Fit, parseFloat(row[1]));
+}
+
+}
+
+T = arrayM_Fit ; // Ranks Fitness
+IDlabels = arrayM_ID;
+U = Array.rankPositions(T);
+
+Rank_Order_Male = newArray();
+
+	for(j=0; j<VarLeng/2; j++){
+
+	Y = U.length -1 - j;
+
+	Y = Y;
+
+	X = U[Y];
+
+	X = IDlabels[X];
+	
+	Label = X;
+
+	X = subArray(Genotype_IDs, X, F);
+
+	//Array.print(X);
+
+	Rank_Order_Male  = Array.concat(Rank_Order_Male , Label, X);
+
+		}
+
+T  = arrayF_Fit ; // Ranks Fitness
+IDlabels = arrayF_ID;
+U = Array.rankPositions(T);
+
+
+Rank_Order_Female = newArray();
+
+	for(j=0; j<VarLeng/2; j++){
+
+	Y = U.length -1 - j;
+	
+	Y = Y;
+
+	X = U[Y];
+
+	X = IDlabels[X];
+	
+	Label = X;
+
+	X = subArray(Genotype_IDs, X, F);
+
+	//Array.print(X);
+
+	Rank_Order_Female  = Array.concat(Rank_Order_Female , Label, X);
+
+		}
+		
+
+UpdateU= Array.concat(arrayF_Fit,arrayM_Fit);
+U=Array.rankPositions(UpdateU);
+
+MalesRanked = newArray();
+
+for (i = 0 ; i < Rank_Order_Male.length; i++){
+
+if(startsWith(Rank_Order_Male[i], "Gen")==1){
+Nam = Rank_Order_Male[i];
+
+MalesRanked = Array.concat(MalesRanked, Nam);
+
+} }
+
+
+FemalesRanked = newArray();
+
+for (i = 0 ; i < Rank_Order_Female .length; i++){
+
+if(startsWith(Rank_Order_Female [i], "Gen")==1){
+Nam = Rank_Order_Female [i];
+
+FemalesRanked = Array.concat(FemalesRanked, Nam);
+
+} }
+
+
+Rank_Order = newArray();
+for(j=0; j<MalesRanked.length; j++){
+female = subArray(	Rank_Order_Female, FemalesRanked[j], F);
+male = subArray(	Rank_Order_Male, MalesRanked [j], F);
+
+Rank_Order=Array.concat(Rank_Order, MalesRanked [j], male, FemalesRanked[j], female);
+}
+
+
+arrayFit = Array.concat(arrayF_Fit,arrayM_Fit);
+
+
+
+// Rank if there are no Males and Females
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+}else{
+
+Rank_Order = newArray();
+
+	for(j=0; j<VarLeng; j++){
+
+	Y = VarLeng -1 - j;
+
+	X = U[Y];
+
+	X = IDlabels[X];
+	
+	Label = X;
+
+	X = subArray(Genotype_IDs, X, F);
+
+	//Array.print(X);
+
+	Rank_Order = Array.concat(Rank_Order, Label, X);
+
+		}
+
+
+}
+
+
+
+
+
+SlicePoint = parseInt(Rank_Order.length*BreedNum);
+
+numberBreeding = BreedNum*VarLeng;
+notBreeding = (VarLeng-lopLeng - numberBreeding);
+if(notBreeding>0){
+EndSlicePoint = SlicePoint + parseInt(Rank_Order.length*(notBreeding/VarLeng));
+}else{
+EndSlicePoint = SlicePoint;
+}
+
+
+T1Array =  Array.slice ( Rank_Order, 0, (SlicePoint) );
+T2Array =  Array.slice ( Rank_Order, SlicePoint, EndSlicePoint);
+
+if(VarLeng-lopLeng==0){
+T3Array = newArray();
+} else {
+T3Array = Array.copy(T1Array);
+}
+
+
+
+
+
+CloneNum = 1;
+mateCycle = parseInt(lopLeng / (BreedNum*VarLeng));
+
+
+
+
+//===========================================================================
+// 2) Mate Pairing
+//===========================================================================
+// This section creates the offspring.
+//---------------------------------------------------------------------------
+
+
+
+//____________________________________________________________________
+
+// Get the list of IDs that are within the Breeding Pool
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+VoteCrowd = newArray();
+
+if(T1Array.length > 0){
+
+// Get the list of Rank Titles and Number of Titles
+
+CT2 = newArray();
+F2 = 0;
+
+for (i = 0 ; i < T1Array.length; i++){
+
+if(startsWith(T1Array[i], "Gen")==1){
+F2 = F2 + 1;
+Nam = T1Array[i];
+
+CT2= Array.concat(CT2, Nam);
+
+} }
+
+
+lopX = F2;
+
+OffspringArray=newArray();
+a_length =  subArray(Rank_Order, CT2[0], F);
+
+a_length = lengthOf(a_length);
+
+
+
+//____________________________________________________________________
+
+// Work out which Mating System is in use
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+settingsFilePath = configFilePath + "AdaptationSettings.txt";
+if(File.exists(settingsFilePath) == 1){
+	settingsString=File.openAsString(settingsFilePath);	// open txt data file
+	defaultSettings=split(settingsString, "\n");
+	
+	
+//Array.show(defaultSettings);
+//waitForUser("");
+	
+if(defaultSettings.length<1){
+
+}else{
+
+
+defaultStart=defaultSettings.length-(ogDefaultSettings.length);
+
+check = defaultSettings[defaultStart-1];
+
+
+
+check = split(check, "\t");
+
+
+if(check.length>0){
+if(startsWith(check[0], "generation") == 1){
+//print("Use Generation Check = " + check[0] );
+
+
+defaultEnd=defaultSettings.length;
+defaultSettings = Array.slice(defaultSettings, defaultStart, defaultEnd);
+}
+}
+
+crowdThreshold = parseFloat(defaultSettings[21]);
+}
+}
+
+
+
+RankComparison = newArray (a_length);
+
+
+
+
+for(L=0; L<mateCycle; L++){
+
+
+
+//____________________________________________________________________
+
+// Mate Pairings
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+//-------------------
+// Adaptive
+//-------------------
+if(MatingSystemChoice == "adaptive"){
+Adaptive = 1;
+
+if(AI<1){
+MatingSystemChoice="random";
+}else{
+
+settingsFilePath = configFilePath + "AdaptationSettings.txt";
+if(File.exists(settingsFilePath) == 1){
+	settingsString=File.openAsString(settingsFilePath);	// open txt data file
+	defaultSettings=split(settingsString, "\n");
+	}
+	
+//Array.show(defaultSettings);
+//waitForUser("");
+	
+if(defaultSettings.length<1){
+MatingSystemChoice="random";
+}else{
+
+
+defaultStart=defaultSettings.length-(ogDefaultSettings.length);
+
+check = defaultSettings[defaultStart-1];
+
+
+
+check = split(check, "\t");
+
+
+if(check.length>0){
+if(startsWith(check[0], "generation") == 1){
+
+
+defaultEnd=defaultSettings.length;
+defaultSettings = Array.slice(defaultSettings, defaultStart, defaultEnd);
+
+MatingSystemChoice  =  defaultSettings[21];
+
+
+
+}else {
+
+
+MatingSystemChoice = "random";
+
+}
+
+
+
+} else {
+
+
+MatingSystemChoice = "random";
+
+}
+
+}
+}
+}
+
+
+
+//-------------------
+// Random Mating
+//-------------------
+if(MatingSystemChoice == "random"){
+
+if(SexType==1){
+
+ParentSort = "NO";
+
+PoolArray = newArray(lopX);
+
+lopP = lengthOf(PoolArray);
+
+PoolArray = Array.copy(CT2);
+PoolArrayRank = newArray();
+
+for(i=0; i<CT2.length/2; i++){
+N=0;
+while(N==0){
+index1=random()*PoolArray.length;
+index2=random()*PoolArray.length;
+
+str1=PoolArray[index1];
+str2=PoolArray[index2];
+
+
+if(endsWith(str1, "_M")==1 && endsWith(str2, "_F")==1){
+PoolArrayRank = Array.concat(PoolArrayRank, str1, str2);
+N=1;
+
+PoolArray=Array.deleteValue(PoolArray, str1);
+PoolArray=Array.deleteValue(PoolArray, str2);
+
+}
+
+
+}
+
+
+
+}
+
+
+
+} else {
+
+ParentSort = "NO";
+
+PoolArray = newArray(lopX);
+
+lopP = lengthOf(PoolArray);
+
+	for(k=0; k<lopP; k++){  // create an array of random numbers
+
+		//print ("k = " + k);
+		PoolArray[k] = random();
+		}
+
+
+PoolArrayRanking = Array.rankPositions(PoolArray);
+PoolArrayRank = newArray();
+
+for(i=0; i<PoolArrayRanking.length; i++){ 
+Num = PoolArrayRanking[i];
+PoolArrayRank = Array.concat(PoolArrayRank, CT2[Num]);
+}
+}
+}
+
+
+//-------------------
+// Ranked Mating
+//-------------------
+if(MatingSystemChoice == "ranked"){
+
+ParentSort = "NO";
+
+PoolArray = newArray(lopX);
+lopP = lengthOf(PoolArray);
+
+PoolArrayRanking = Array.getSequence(lopX);
+PoolArrayRank = newArray();
+
+for(i=0; i<PoolArrayRanking.length; i++){ 
+Num = PoolArrayRanking[i];
+PoolArrayRank = Array.concat(PoolArrayRank, CT2[Num]);
+}
+
+
+}
+
+
+
+
+//-------------------
+// Poly
+//-------------------
+
+
+
+
+
+if(MatingSystemChoice == "poly"){
+
+
+if(SexType==1){
+
+PoolArray = newArray(lopX);
+lopP = lengthOf(PoolArray);
+
+PolyNumber = parseInt(lopP/4.5);
+
+PolyPool  = Array.copy(CT2);
+PolyPool = Array.slice(PolyPool, 0, PolyNumber);
+
+OtherPool = Array.copy(CT2);
+OtherPool = Array.slice(OtherPool, PolyNumber, OtherPool.length);
+
+
+
+slicePointPoly = lopP/2 + PolyNumber;
+
+PoolArrayRank = newArray();
+PoolArray = Array.copy(CT2);
+
+for(i=0; i<lopP/2; i++){ 
+N=0;
+while(N==0){
+
+index1= parseInt((i) / 5);
+index2=(random()*(OtherPool.length));
+
+str1=PolyPool[index1];
+str2=OtherPool[index2];
+
+
+if(endsWith(str1, "_M")==1 && endsWith(str2, "_F")==1 && str1 != str2){
+PoolArrayRank = Array.concat(PoolArrayRank, str1, str2);
+N=1;
+
+PoolArray=Array.deleteValue(OtherPool, str2);
+} else {
+
+if(endsWith(str1, "_F")==1 && endsWith(str2, "_M")==1 && str1 != str2){
+PoolArrayRank = Array.concat(PoolArrayRank, str1, str2);
+N=1;
+
+PoolArray=Array.deleteValue(PoolArray, str2);
+}
+
+}
+
+
+}
+
+}
+} else {
+
+
+PoolArray = newArray(lopX);
+lopP = lengthOf(PoolArray);
+
+PolyNumber = parseInt(lopP/4.5);
+
+PolyPool  = Array.copy(CT2);
+PolyPool = Array.slice(PolyPool, 0, PolyNumber);
+
+OtherPool = Array.copy(CT2);
+OtherPool = Array.slice(OtherPool, PolyNumber, OtherPool.length);
+
+
+slicePointPoly = lopP/2 + PolyNumber;
+
+PoolArrayRank = newArray();
+PoolArray = Array.copy(CT2);
+
+for(i=0; i<lopP/2; i++){ 
+N=0;
+while(N==0){
+
+index1= parseInt((i) / 5);
+index2=(random()*(OtherPool.length));
+
+str1=PolyPool[index1];
+str2=OtherPool[index2];
+
+
+if(str1 != str2){
+PoolArrayRank = Array.concat(PoolArrayRank, str1, str2);
+N=1;
+
+PoolArray=Array.deleteValue(OtherPool, str2);
+} 
+
+}
+
+
+}
+
+}
+
+}
+
+
+//-------------------
+// assortative
+//-------------------
+if(MatingSystemChoice ==  "assortative"){
+
+//Table.showRowNumbers(false);
+
+	ParentSort = "YES";
+
+	PoolArray = newArray(lopX);
+	lopP = lengthOf(PoolArray);
+
+	RankCompTitles = Array.copy(CT2);
+
+	a_length =  subArray(Rank_Order, CT2[0], F);
+
+	a_length = lengthOf(a_length);
+
+	//Array.print(RankCompTitles);
+
+	PoolArrayRank = newArray();
+
+
+//POOL
+
+
+for(g=0; g<lopP/2; g++){ // Set up pool of ranks that are still unused
+
+	RankStandard=RankCompTitles[0];
+
+	RankStandard = subArray(Rank_Order, RankStandard, F);
+
+	//Array.show(RankStandard);
+
+	Z_length = lengthOf(RankCompTitles);
+
+	//Array.print(RankCompTitles);
+
+	RankDifference=newArray(Z_length); 
+
+	RankComparison = newArray (a_length);
+
+	//print("Z_length = " + Z_length);
+
+	// COLUMNS
+		for(k=0; k<Z_length; k++){ // Go through Each Column
+	
+			RankComparing = RankCompTitles[k];
+		
+			RankComparing = subArray(Rank_Order, RankComparing, F);
+	
+			//Array.show(RankComparing);
+
+	// GENE DISTANCE
+		for (i = 0; i < a_length; i++){ // Calculate Distance
+
+			RankSt = (RankStandard[i]);
+			RankCo = (RankComparing[i]);
+			
+			NaNcheck=parseFloat(RankSt);
+			NaNcheck=isNaN(NaNcheck);
+			if(NaNcheck!=1){
+			RankComparison[i] =     Math.sqrt(      Math.sqr ( RankSt - RankCo)      );      //measure of distance from optimum luminance
+			}else{
+			RankComparison[i]=0;
+			}
+			
+			RankDiff = 0;
+
+			for (f = 0; f <a_length; f++){
+
+			RankDiff = (RankDiff + RankComparison[f]);
+	
+			RankDifference[k] =RankDiff;
+
+					}
+
+			
+				}
+			}
+
+	RankedRankDifference = Array.rankPositions(RankDifference);
+	
+	DIF1=RankedRankDifference[0];
+	DIF2=RankedRankDifference[1];
+	
+	if(SexType==1){
+	
+			MaterSex = RankCompTitles[DIF1];
+			if(endsWith(MaterSex, "_M")==1){
+			
+			MateSex= RankCompTitles[DIF2];
+			x=1;
+			
+			while( endsWith(MateSex, "_M") ==1){
+			x=x+1;
+			DIF2=RankedRankDifference[x];
+			MateSex= RankCompTitles[DIF2];
+			
+			}
+			}
+			
+			
+				if(endsWith(MaterSex, "_F")==1){
+			
+			MateSex= RankCompTitles[DIF2];
+			x=1;
+			
+			while(endsWith(MateSex, "_F") ==1){
+			x=x+1;
+			DIF2=RankedRankDifference[x];
+			MateSex= RankCompTitles[DIF2];
+			
+			}
+			}
+		
+	}
+		
+	PoolArrayRank = Array.concat(PoolArrayRank, RankCompTitles[DIF1], RankCompTitles[DIF2]);
+	
+	//Array.show(RankCompTitles,RankDifference, RankedRankDifference, PoolArrayRank);
+	//waitForUser("");
+	
+	
+	if (Z_length > 2){
+
+	RankCompTitles = Array.deleteValue(RankCompTitles, RankCompTitles[DIF1]);
+	
+	
+	DIF3 = DIF2 -1;
+	
+	RankCompTitles = Array.deleteValue(RankCompTitles, RankCompTitles[DIF3]);
+
+			}
+
+	}
+
+	}
+
+
+//-------------------
+// Disassortative
+//-------------------
+if(MatingSystemChoice ==  "disassortative"){
+
+//Table.showRowNumbers(false);
+
+	ParentSort = "YES";
+
+	PoolArray = newArray(lopX);
+	lopP = lengthOf(PoolArray);
+
+	RankCompTitles = Array.copy(CT2);
+	
+	a_length =  subArray(Rank_Order, CT2[0], F);
+
+	a_length = lengthOf(a_length);
+
+	//Array.print(RankCompTitles);
+
+	PoolArrayRank = newArray();
+
+
+//POOL
+
+
+for(g=0; g<lopP/2; g++){ // Set up pool of ranks that are still unused
+
+	RankStandard=RankCompTitles[0];
+
+	RankStandard = subArray(Rank_Order, RankStandard, F);
+
+	//Array.show(RankStandard);
+
+	Z_length = lengthOf(RankCompTitles);
+
+	//Array.print(RankCompTitles);
+
+	RankDifference=newArray(Z_length); 
+
+	RankComparison = newArray (a_length);
+
+	//print("Z_length = " + Z_length);
+
+	// COLUMNS
+		for(k=0; k<Z_length; k++){ // Go through Each Column
+	
+			RankComparing = RankCompTitles[k];
+		
+			RankComparing = subArray(Rank_Order, RankComparing, F);
+	
+			//Array.show(RankComparing);
+
+	// GENE DISTANCE
+		for (i = 0; i < a_length; i++){ // Calculate Distance
+
+			RankSt = (RankStandard[i]);
+			RankCo = (RankComparing[i]);
+			
+			NaNcheck=parseFloat(RankSt);
+			NaNcheck=isNaN(NaNcheck);
+			if(NaNcheck!=1){
+			RankComparison[i] =     Math.sqrt(      Math.sqr ( RankSt - RankCo)      );      //measure of distance from optimum luminance
+			}else{
+			RankComparison[i]=0;
+			}
+			
+			RankDiff = 0;
+
+			for (f = 0; f <a_length; f++){
+
+			RankDiff = (RankDiff + RankComparison[f]);
+
+			RankDiff = 1 /  (RankDiff+1);
+	
+			RankDifference[k] =RankDiff;
+
+					}
+
+			
+				}
+			}
+
+	RankDifference[0] = 0;
+
+	RankedRankDifference = Array.rankPositions(RankDifference);
+
+	DIF1=RankedRankDifference[0];
+	DIF2=RankedRankDifference[RankedRankDifference.length-1];
+	
+	
+		if(SexType==1){
+	
+			MaterSex = RankCompTitles[DIF1];
+			if(endsWith(MaterSex, "_M")==1){
+			
+			MateSex= RankCompTitles[DIF2];
+			x=RankedRankDifference.length-1;
+			
+			while( endsWith(MateSex, "_M") ==1){
+			x=x-1;
+			DIF2=RankedRankDifference[x];
+			MateSex= RankCompTitles[DIF2];
+			
+			}
+			}
+			
+			
+				if(endsWith(MaterSex, "_F")==1){
+			
+			MateSex= RankCompTitles[DIF2];
+			x=RankedRankDifference.length-1;
+			
+			while(endsWith(MateSex, "_F") ==1){
+			x=x-1;
+			DIF2=RankedRankDifference[x];
+			MateSex= RankCompTitles[DIF2];
+			
+			}
+			}
+		
+	}
+	
+	PoolArrayRank = Array.concat(PoolArrayRank, RankCompTitles[DIF1], RankCompTitles[DIF2]);
+	
+	//Array.show(RankCompTitles,RankDifference, RankedRankDifference, PoolArrayRank);
+	//waitForUser("");
+
+	if (Z_length > 2){
+
+	RankCompTitles = Array.deleteValue(RankCompTitles, RankCompTitles[DIF1]);
+	
+	
+	DIF3 = DIF2 -1;
+	
+	RankCompTitles = Array.deleteValue(RankCompTitles, RankCompTitles[DIF3]);
+
+			}
+
+	}
+
+	}
+
+
+
+
+//===========================================================================
+// 3) Crossover
+//===========================================================================
+// This section creates the offspring.
+//---------------------------------------------------------------------------
+
+PairNumCount = 0;
+
+for(k=0; k<lopX; k++){
+
+PairNumCount = PairNumCount + 1;
+
+K = k;
+k= k+1; //makes sure that k doubles each time.
+
+//____________________________________________________________________
+
+// Get Parents
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+/*
+if (ParentSort == "YES"){
+
+	p1 =  PoolArrayRank[K];
+
+	p2 = PoolArrayRank[k];
+
+
+	//Array.print(PoolArrayRank);
+
+		} else {
+
+	Num1 = PoolArrayRank[K];
+
+	Num2 = PoolArrayRank[k];
+
+	p1 = CT2[Num1];
+
+	p2 = CT2[Num2];
+
+	}
+	
+*/
+
+	p1 = PoolArrayRank[K];
+
+	p2 = PoolArrayRank[k];
+
+
+Parent1 = subArray(Rank_Order, p1, F);
+
+Parent2 = subArray(Rank_Order, p2, F);
+
+
+checkDistanceArray1 = newArray(a_length);
+checkDistanceArray2 = newArray(a_length);
+
+RankStandard = Array.copy(Parent1);
+RankComparing = Array.copy(Parent2);
+			
+	// GENE DISTANCE
+		for (i = 0; i < a_length; i++){ // Calculate Distance
+
+			RankSt = (RankStandard[i]);
+			RankCo = (RankComparing[i]);
+			
+			
+			NaNcheck=parseFloat(RankSt);
+			NaNcheck=isNaN(NaNcheck);
+			if(NaNcheck!=1){
+			RankComparison[i] =     Math.sqrt(      Math.sqr ( RankSt - RankCo)      );      //measure of distance from optimum luminance
+			}else{
+			RankComparison[i]=0;
+			}
+			
+			RankDiff = 0;
+
+			for (f = 0; f <a_length; f++){
+
+			RankDiff = (RankDiff + RankComparison[f]);
+	
+			CheckDist =RankDiff;
+
+					}
+
+					}
+
+
+//}
+
+//____________________________________________________________________
+
+// Point Crossover
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+
+if (crossSet1==1) {
+randCross = random();
+if (randCross<=crossOverProb) {
+
+//-------------------
+// Cross 1
+//-------------------
+
+a_length=lengthOf(Parent1); //  array length
+
+
+crossPoint1= ( a_length*random() ); 	// random coordinate 1
+crossPoint1= parseInt(crossPoint1);		 // convert to integer
+
+crossPoint2= ( a_length*random() ); 	// random coordinate 2
+crossPoint2= parseInt(crossPoint2);		 // convert to integer
+
+
+crossArray1 = newArray(crossPoint1, crossPoint2);
+
+crossArray1= Array.sort(crossArray1);
+
+//print ("		Cross Point 1 = " + crossArray1[0] + " Cross Point 2 =" + crossArray1[1]);
+
+Crossover1 = Array.copy(Parent1);
+
+Crossover2 = Array.copy(Parent2);
+
+crossArray1[0]=crossArray1[0]-1;
+crossArray1[1]=crossArray1[1]+1;
+
+Y= crossArray1[0];
+if (Y <=0){
+		Y=0;
+			}	
+
+Z= crossArray1[1]+1;
+	if (Z >=a_length){
+		Z=a_length;
+			}		
+
+
+
+
+for(i=Y; i<Z; i++)	{
+
+ratio1 = 101 - (100*Math.sqrt(random()));
+
+if(crossOverComplete == "incomplete"){
+
+gen1=parseFloat( Parent2[i] ) * ratio1;
+gen2=parseFloat( Parent1[i] )* ratio1;
+
+Crossover1[i] = (gen1+Parent1[i])/(1+ratio1); // new Version that allows for rarer crossover within the same gene.
+Crossover2[i] = (gen2+Parent2[i])/(1+ratio1);
+
+} else {
+
+Crossover1[i] = Parent2[i];
+Crossover2[i] = Parent1[i];
+
+}
+
+			}
+			
+
+	
+
+	if (crossSet2==1) {
+	
+		//-------------------
+		// Cross 2
+		//-------------------
+
+	Bin=random();
+	Bin =  parseInt(Bin);	
+
+	if (Z==a_length-1) { // Make sure it can't be 1 if the prior array includes the First value in the array.
+	Bin=0;
+	}
+
+	if (Y==0) { // Make sure it can't be 0 if the prior array includes the Final value in the array.
+	Bin=1;
+	}
+
+	//print("Bin =" + Bin);
+
+	// Before
+	//-----------------------------------------------------------------------
+	if (Bin==0) { // If Bin =1, then it is after, if Bin = 0 it is before.
+
+	b_length = crossArray1[0]-1 ; 	
+	c_length = 0;
+
+	// After
+	//-----------------------------------------------------------------------
+		} else {
+
+	b_length = a_length - crossArray1[1]  - 1; // length from the longest to the last point
+	c_length = crossArray1[1] + 1;
+		}
+
+	// Crossover
+	//-----------------------------------------------------------------------
+
+	crossPoint1= ( b_length*random() ); 	// random coordinate 1
+	crossPoint1= parseInt(crossPoint1);		 // convert to integer
+	crossPoint1= crossPoint1 + c_length;
+
+	crossPoint2= ( b_length*random() ); 	// random coordinate 2
+	crossPoint2= parseInt(crossPoint2);		 // convert to integer
+	crossPoint2= crossPoint2 + c_length;
+
+	crossArray2 = newArray(crossPoint1, crossPoint2);
+
+	crossArray2= Array.sort(crossArray2);
+
+	//print ("		Cross Point 3 = " + crossArray2[0] + " Cross Point 4 =" + crossArray2[1]);
+
+	Y= crossArray2[0];
+	Z= crossArray2[1] +1;
+	if (Z >=a_length){
+	Z=a_length;
+	}
+
+	for(i=Y; i<Z; i++){
+
+}
+
+
+
+	for(i=Y; i<Z; i++){
+	
+ratio1 = 101 - (100*Math.sqrt(random()));
+
+if(crossOverComplete == "incomplete"){
+
+gen1=parseFloat( Parent2[i] ) * ratio1;
+gen2=parseFloat( Parent1[i] )* ratio1;
+
+Crossover1[i] = (gen1+Parent1[i])/(1+ratio1); // new Version that allows for rarer crossover within the same gene.
+Crossover2[i] = (gen2+Parent2[i])/(1+ratio1);
+
+} else {
+
+Crossover1[i] = Parent2[i];
+Crossover2[i] = Parent1[i];
+
+}
+
+	}
+
+	} 
+
+	} else {
+	
+	Crossover1 = Parent1;
+	Crossover2 = Parent2;
+	
+	}
+	} 
+
+
+
+
+//____________________________________________________________________
+
+// Random Crossover
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+if (crossSet1==0) {
+randCross = random();
+if (randCross<=crossOverProb){
+
+a_length=lengthOf(Parent1); //  array length
+
+Crossover1 = Array.copy(Parent1);
+Crossover2 = Array.copy(Parent2);
+
+for(i=0; i<a_length; i++)	{
+	rand2 =  parseInt(random());
+	if (rand2 ==1){
+	
+	ratio1 = 101 - (100*Math.sqrt(random()));
+
+	if(crossOverComplete == "incomplete"){
+
+	gen1=parseFloat( Parent2[i] ) * ratio1;
+	gen2=parseFloat( Parent1[i] )* ratio1;
+
+	Crossover1[i] = (gen1+Parent1[i])/(1+ratio1); // new Version that allows for rarer crossover within the same gene.
+	Crossover2[i] = (gen2+Parent2[i])/(1+ratio1);
+
+	} else {
+
+	Crossover1[i] = Parent2[i];
+	Crossover2[i] = Parent1[i];
+
+	}
+	
+
+
+				}
+	
+
+						}
+	
+	
+	} else {
+	Crossover1 = Parent1;
+	Crossover2 = Parent2;
+	
+	}
+	}
+	
+
+
+Offspring1 = Array.copy(Crossover1);
+
+Offspring2 = Array.copy(Crossover2);
+
+p1loc=Offspring1.length-2;
+p2loc=Offspring1.length-1;
+
+Offspring1[p1loc]="Par_"+p1;
+Offspring1[p2loc]="Par_"+p2;
+Offspring2[p1loc]="Par_"+p1;
+Offspring2[p2loc]="Par_"+p2;
+IDmaxRank = IDmaxRank+1;
+
+Sex1="";
+Sex2="";
+
+if(SexType==1){
+Sex1="_M";
+Sex2="_F";
+}
+
+label1 = "Gen" + (AI+1) + "_Mut0_ID" + IDmaxRank + Sex1;
+
+IDmaxRank = IDmaxRank+1;
+label2 = "Gen" + (AI+1) + "_Mut0_ID"+ IDmaxRank + Sex2;
+
+//label1 =  p1 + " & " + p2; // These are used to make sure the mating is random (disabled)
+//label2 =  p2 + " & " + p1;
+
+OffspringArray = Array.concat (OffspringArray, label1, Offspring1, label2, Offspring2);
+
+
+
+checkDistanceArray1 = newArray(a_length);
+checkDistanceArray2 = newArray(a_length);
+
+RankStandard = Array.copy(Parent1);
+RankComparing = Array.copy(Offspring1);
+			
+	// GENE DISTANCE
+		for (i = 0; i < a_length; i++){ // Calculate Distance
+
+			RankSt = (RankStandard[i]);
+			RankCo = (RankComparing[i]);
+			
+			NaNcheck=parseFloat(RankSt);
+			NaNcheck=isNaN(NaNcheck);
+			if(NaNcheck!=1){
+			RankComparison[i] =     Math.sqrt(      Math.sqr ( RankSt - RankCo)      );      //measure of distance from optimum luminance
+			}else{
+			RankComparison[i]=0;
+			}
+			
+			
+			RankDiff = 0;
+
+			for (f = 0; f <a_length; f++){
+
+			RankDiff = (RankDiff + RankComparison[f]);
+	
+			CheckDist =RankDiff;
+
+					}
+				
+					}
+
+
+
+
+VoteMate=Array.concat(VoteMate,"RAND");
+VoteCrowd=Array.concat(VoteCrowd,"NO");
+
+if(CheckDist<=ALPHA){
+VoteMate[VoteMate.length-1]="FAR";
+}
+
+if(CheckDist>=BETA){
+VoteMate[VoteMate.length-1]="NEAR";
+} 
+
+if(CheckDist<=DELTA){
+VoteCrowd[VoteCrowd.length-1]="YES";
+}
+
+
+
+RankStandard =  Array.copy(Parent2);
+RankComparing = Array.copy(Offspring2);
+			
+	// GENE DISTANCE
+		for (i = 0; i < a_length; i++){ // Calculate Distance
+
+			RankSt = (RankStandard[i]);
+			RankCo = (RankComparing[i]);
+			
+			NaNcheck=parseFloat(RankSt);
+			NaNcheck=isNaN(NaNcheck);
+			if(NaNcheck!=1){
+			RankComparison[i] =     Math.sqrt(      Math.sqr ( RankSt - RankCo)      );      //measure of distance from optimum luminance
+				}else{
+			RankComparison[i]=0;
+			}
+			RankDiff = 0;
+
+			for (f = 0; f <a_length; f++){
+
+			RankDiff = (RankDiff + RankComparison[f]);
+	
+			CheckDist =RankDiff;
+
+					}
+
+					}
+
+
+VoteMate=Array.concat(VoteMate,"RAND");
+VoteCrowd=Array.concat(VoteCrowd,"NO");
+
+if(CheckDist<=ALPHA){
+VoteMate[VoteMate.length-1]="FAR";
+}
+
+if(CheckDist>=BETA){
+VoteMate[VoteMate.length-1]="NEAR";
+} 
+
+
+if(CheckDist<=DELTA){
+VoteCrowd[VoteCrowd.length-1]="YES";
+}
+
+
+
+
+} }
+
+
+//===========================================================================
+// 4) Genetic Mutation
+//===========================================================================
+// This section creates the offspring.
+//---------------------------------------------------------------------------
+
+
+//____________________________________________________________________
+
+// Locate Genetic Units
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+//  This section locates and counts genetic units.
+
+
+unitArray = newArray();
+unitIndex = newArray();
+for(i=0;i<CT.length;i++){
+tempStr = CT[i];
+if(startsWith(tempStr, "unit")){
+unitArray = Array.concat(unitArray, tempStr);
+unitIndex  = Array.concat(unitIndex, i+1);
+}
+}
+
+
+
+unitNum = newArray();		//Number of Units
+unitStartIndex =newArray();
+unitLengths = newArray();
+
+if(unitArray.length>1){
+
+whileGate=1;
+
+val=0;
+x = 0;
+while(whileGate==1){
+
+
+if(unitArray.length>1){
+tempStr = unitArray[0];
+tempStr = split(tempStr,"_");
+tempStr = "unit_"+tempStr[1];
+
+
+deleteIndex=newArray();
+for(j=0;j<unitArray.length;j++){
+tempStr2=unitArray[j];
+if(startsWith(tempStr2, tempStr)){
+deleteIndex=Array.concat(deleteIndex, j);
+}
+}
+
+for(j=0;j<deleteIndex.length;j++){
+unitArray=Array.deleteIndex(unitArray, deleteIndex[deleteIndex.length-1-j]);
+}
+
+unitNum = Array.concat(unitNum, tempStr);
+
+unitStartIndex = Array.concat(unitStartIndex, val);
+
+unitLengths = Array.concat(unitLengths, (deleteIndex.length-1));
+
+
+val=val+unitLengths[x]+1;
+x=x+1;
+}else{
+whileGate=0;
+}
+
+
+}
+
+}
+
+
+
+
+//____________________________________________________________________
+
+// Offspring Mutations
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+// Applies Genetic Mutations to the offspring
+
+
+CT3 = newArray();
+F3 = 0;
+
+for (i = 0 ; i < OffspringArray.length; i++){
+
+if(startsWith(OffspringArray[i], "Gen")==1){
+F3 = F3 + 1;
+Nam = OffspringArray[i];
+
+CT3= Array.concat(CT3, Nam);
+
+} }
+
+
+OffspringMutantArray = newArray();
+
+for(k=0; k<F3; k++){
+
+MutArray = newArray(a_length); //create the array
+
+OffspringNum =  k;
+
+OffspringNum = CT3 [OffspringNum];
+label = OffspringNum;
+						//print(OffspringNum);
+OffspringNum =  subArray(OffspringArray, OffspringNum, F);
+
+for(i=0; i<a_length-2; i++){
+
+	//Gene = Array.slice(OffspringNum, i, i+1);
+	
+    	//Array.getStatistics(Gene, min);
+		
+	Gene= parseFloat(OffspringNum[i]);
+
+	oGene = Gene;
+
+	GeneNum = "Gene_" + i; // Used to test which gene it's on
+
+	//print( GeneNum); // Used to display which gene it's on.
+		//print("   min: "+min);
+
+	
+
+	// ==========MUTATION===========
+
+
+	//-----------------Distribution & Strength---------------
+
+	if (mutDistOffs == "uniform") {
+		mutStr = random(); 
+		mutStr = mutStr / mutStrengthOffs;  // modifies the mutation strength to give a lower probability of extreme mutations.
+		prMut = "uniform";
+	
+	}
+
+	if (mutDistOffs == "normal") {
+		mutStr = random("gaussian"); 
+		mutStr = mutStr / mutStrengthOffs;  // modifies the mutation strength to give a lower probability of extreme mutations.
+		prMut = "normal";
+	}
+	
+	if (mutDistOffs == "poisson") {
+		mutStr = random(); 
+		mutStr = exp(mutStr)/mutStrengthOffs;  // modifies the mutation strength to give a lower probability of extreme mutations.
+		prMut = "poisson";
+		
+	}
+
+
+	//-----------------Probability----------------------
+
+		mutProb = random();
+		if (mutProb<=mutRateOffs) {  // 
+			mutat = 1;
+		} else {
+			mutat = 0;
+		}
+	if (mutat==1) { // All that follows only occurs if a mutation occurs.
+
+		//-----------------Direction----------------------
+
+		mutDir =  random();
+		if (mutDir<=0.50) {
+			mutDir = -1;
+		} else {
+			mutDir = 1;
+		}
+
+		//---------------Mutant Gene-------------------
+
+		mutGene = oGene + (mutStr * mutDir); // the mutant gene is oGene =/- the random mutStr
+			//-----Clipping------
+			
+			if (mutGene>1) { // Can't go above 1.
+			mutGene = 1;
+				}
+			if (mutGene<0) { // Can't go below 0.
+			mutGene = 0;
+				}
+
+		//print ("                      		" + label + ","  + prMut + " Mutation, Gene " +  i  + " = " + oGene + " - > " + mutGene);
+			
+		} else {
+		mutGene=oGene;
+
+		
+		//print ("                      " +label + ","  + prMut + " Mutation, Gene " +  i  + " = No Mutation:"+mutGene);
+
+		}
+
+
+	// ==========INVERSION===========
+	if(inversionRateOffs > 0){
+	
+	invProb = random();
+		if (invProb<=inversionRateOffs) {  // 
+			invertG = 1;
+		} else {
+			invertG = 0;
+		}
+
+
+	if (invertG==1) {
+	mutGene= 1-mutGene;
+
+	//print ("                      		" + label + ","  +  " Inversion, Gene " +  i  + " = " + 1-mutGene + " - > " + mutGene);
+			    }else{
+	
+	//print ("                      " +label + ","  +  " Inversion, Gene " +  i  + " = No Inversion :"+mutGene);
+
+			}
+
+	}
+
+	MutArray[i] = mutGene;
+		} 
+
+	//print ("");
+	// ==========Duplication===========
+
+	if(duplicationRateOffs>0){
+	
+	dupLeng=MutArray.length-2;
+	for(DJ=0; DJ<dupLeng; DJ++){
+	
+	dupProb = random();
+	if (dupProb<=duplicationRateOffs) {  // 
+			duplicateG = 1;
+	} else {
+			duplicateG = 0;
+		}
+
+
+	if (duplicateG==1) {
+	DuplicatedGene=MutArray[DJ];
+
+	NewIndex = DJ + (random("gaussian")*(dupLeng/2));
+	NewIndex = parseInt(NewIndex);
+	
+		while(NewIndex<0){
+		NewIndex=(dupLeng-1)+NewIndex;
+		}
+		
+		while(NewIndex>dupLeng-1){
+		NewIndex= NewIndex-(dupLeng-1);
+		}
+
+	MutArray[NewIndex]=DuplicatedGene;
+	//print ("                      		" + label + ","  +  " Duplication, Gene " +  DJ  + " = " + "Index"+DJ + " - > " + "Index"+NewIndex);
+	} 	
+	}}
+	
+
+
+
+// ==========Unit Duplication ===========
+ 
+ 
+ if(unitNum.length>0 && unitRateOffs>0){
+ 
+ unitDup = random();
+	if (unitDup <= unitRateOffs) {  // 
+			unitDup = 1;
+	} else {
+			unitDup = 0;
+		}
+		
+if(unitDup==1){		
+ 
+unitSelect = parseInt(random()*(unitNum.length-1));
+
+startPoint = unitStartIndex[unitSelect];
+
+unitSelectionA = Array.slice(unitIndex, startPoint, (startPoint+unitLengths[unitSelect]));
+
+if(unitSelectionA.length>1){
+GeneDupLength = unitSelectionA[1]- unitSelectionA[0];
+
+subUnit1 = parseInt(random()*(unitSelectionA.length-1));
+unitSelectionB=Array.deleteIndex(unitSelectionA, subUnit1);
+subUnit1= unitSelectionA[subUnit1];
+
+
+
+subUnit2 = parseInt(random()*(unitSelectionB.length-1));
+subUnit2 = unitSelectionB[subUnit2];
+
+
+subUnits=newArray(subUnit1,subUnit2);
+
+GeneCopy = Array.slice(MutArray,subUnit1, (subUnit1+GeneDupLength-1));
+GeneCopyLabels =  Array.slice(CT,subUnit1, (subUnit1+GeneDupLength-1));
+
+GenePaste = Array.slice(MutArray,subUnit2, (subUnit2+GeneDupLength-1));
+GenePasteLabels =  Array.slice(CT,subUnit2, (subUnit2+GeneDupLength-1));
+
+GenePostPaste = newArray();
+
+for(x=0; x<GenePaste.length; x++){
+rand=random();
+if(rand<=0.75){
+ratio1 = 101 - (100*Math.sqrt(random()));
+if(crossOverComplete == "incomplete"){
+
+Gene = GeneCopy[x]*ratio1 ;
+oldGene = MutArray[x+subUnit2];
+newGene = (Gene+oldGene)/(1+ratio1);
+
+MutArray[x+subUnit2]=newGene;
+GenePostPaste =Array.concat(GenePostPaste,MutArray[x+subUnit2]);
+} else {
+MutArray[x+subUnit2]=GeneCopy[x];
+GenePostPaste =Array.concat(GenePostPaste,MutArray[x+subUnit2]);
+
+}}else{
+GenePostPaste =Array.concat(GenePostPaste,"old");
+}
+
+}
+
+
+//Array.print(GeneCopyLabels);
+//Array.print(GeneCopy);
+
+//Array.print(GenePasteLabels);
+//Array.print(GenePaste);
+//Array.print(GenePostPaste);
+
+
+}
+
+}
+}
+
+
+
+
+
+// ==========Scramble ===========
+if(scrambleRateOffs > 0){
+
+scrambleProb = random();
+	if (scrambleProb <=scrambleRateOffs) {  // 
+			scrambleG = 1;
+	} else {
+			scrambleG = 0;
+		}
+
+ 
+if(scrambleG==1){
+
+scrambleLength = Math.sqrt( Math.sqr ( random("gaussian") / 5 ) ) ;
+scrambleLength = scrambleLength*(MutArray.length-2);
+scrambleLength = parseInt(scrambleLength);
+
+//print("Length = " +scrambleLength);
+
+if(scrambleLength>(MutArray.length-2)){
+scrambleLength=(MutArray.length-2);
+}
+
+if(scrambleLength==0){
+scrambleLength=1;
+}
+
+
+scramblePoint1=random()*((MutArray.length-2) - scrambleLength);
+scramblePoint1= parseInt(scramblePoint1);	
+
+
+scramblePoint2= scramblePoint1+scrambleLength;
+
+
+/*
+scramblePoint1= ((MutArray.length-2)*random() ); 	// random coordinate 1
+scramblePoint1= parseInt(scramblePoint1);		 // convert to integer
+
+scramblePoint2= ((MutArray.length-2)*random() ); 	// random coordinate 2
+scramblePoint2= parseInt(scramblePoint2);		 // convert to integer
+*/
+
+scrambleArray1 = newArray(scramblePoint1, scramblePoint2);
+
+scrambleArray1= Array.sort(scrambleArray1);
+
+//print ("		scramble Point 1 = " + scrambleArray1[0] + " scramble Point 2 =" + scrambleArray1[1]);
+
+scrambleOver1 = Array.copy(MutArray);
+
+
+scrambleOver2 = newArray();
+scrambleRandom = newArray();
+
+for(sc=scrambleArray1[0]; sc<=scrambleArray1[1]; sc++){
+
+scrambleOver2 =  Array.concat(scrambleOver2,MutArray[sc]);
+
+scrambleRandom = Array.concat(scrambleRandom, random());
+
+}
+
+scrambleRandom=Array.rankPositions(scrambleRandom);
+
+
+
+for(sc=0; sc<scrambleRandom.length; sc++){
+
+tempStr = scrambleArray1[0] + sc;
+
+tempStr2= scrambleRandom[sc];
+
+scrambleOver1[tempStr] = scrambleOver2[tempStr2];
+
+}
+
+MutArray = scrambleOver1;
+
+} }
+	
+	
+	
+
+	p1loc=MutArray.length-2;
+	p2loc=MutArray.length-1;
+	
+	p1=OffspringNum[p1loc];
+	p2=OffspringNum[p2loc];
+
+	MutArray[p1loc]=p1;
+	MutArray[p2loc]=p2;
+	
+	
+	OffspringMutantArray = Array.concat(OffspringMutantArray, label, MutArray);
+
+
+}
+} else {
+OffspringMutantArray = newArray();
+}
+
+
+
+//____________________________________________________________________
+
+//  T2 Mutations
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+// Applies Genetic Mutations to the offspring
+
+if(T2Array.length > 0){
+
+CT4 = newArray();
+F4 = 0;
+
+for (i = 0 ; i < T2Array.length; i++){
+
+if(startsWith(T2Array[i], "Gen")==1){
+F4 = F4 + 1;
+Nam = T2Array[i];
+
+CT4= Array.concat(CT4, Nam);
+
+} }
+
+a_length =  subArray(Rank_Order, CT4[0], F);
+a_length = a_length.length;
+
+T2MutantArray=newArray();
+
+for(L=0; L<CloneNum; L++){
+
+for(k=0; k<F4; k++){
+
+MutArray = newArray(a_length); //create the array
+
+RankNum = k;
+
+RankNum = CT4 [RankNum];
+label = RankNum;
+labelSplit = split(label, "_");
+mutNum = replace(labelSplit[1], "Mut", "");
+mutNum = split(mutNum, ".");
+mutNum = parseInt(mutNum[0]);
+mutNum = mutNum+1;
+
+
+if(SexType=="asexual"){
+if(L==0){
+clone=".a";
+}
+if(L==1){
+clone=".b";
+}
+genLabel = "Gen" + (AI+1);
+
+}else{
+clone="";
+genLabel  = labelSplit[0];
+}
+
+sex="";
+if(SexType==1){
+sex="_"+labelSplit[3];
+}
+
+label = genLabel+"_Mut"+ mutNum + clone +"_"+labelSplit[2]+sex;
+						//print(RankNum);
+RankNum1 = subArray(T2Array, RankNum, F);
+
+for(i=0; i<a_length; i++){
+
+	Gene = Array.slice(RankNum1, i, i+1);
+	
+    	Array.getStatistics(Gene, min);
+
+	oGene = min;
+
+	GeneNum = "Gene_" + i; // Used to test which gene it's on
+
+	//print( GeneNum); // Used to display which gene it's on.
+		// print("   min: "+min);
+
+	// ==========MUTATION===========
+
+
+		//-----------------Distribution & Strength---------------
+
+	if (mutDistT2 == "uniform") {
+		mutStr = random(); 
+		mutStr = mutStr / (mutStrengthT2  - (i/10) );  // modifies the mutation strength to give a lower probability of extreme mutations.
+		prMut = "uniform";					// the Lower the ranking the more powerful mutation is.
+	}
+
+	if (mutDistT2 == "normal") {
+		mutStr = random("gaussian"); 
+		mutStr = mutStr / (mutStrengthT2  - (i/10) );  // modifies the mutation strength to give a lower probability of extreme mutations.
+		prMut = "normal";					// the Lower the ranking the more powerful mutation is.
+	}
+	
+	if (mutDistT2 == "poisson") {
+		mutStr = random(); 
+		mutStr = exp(mutStr)/(mutStrengthT2 - (i/10) );  // modifies the mutation strength to give a lower probability of extreme mutations.
+		prMut = "poisson";						// the Lower the ranking the more powerful mutation is.
+	}
+
+
+	//-----------------Probability----------------------
+
+		mutProb = random();
+		if (mutProb<=mutRateT2) {  // This is the probability of a mutation occuring, it is intentionally high for the purposes of the demo.
+									// the Lower the ranking the more probable mutation is.
+			mutat = 1;
+		} else {
+			mutat = 0;
+		}
+	if (mutat==1) { // All that follows only occurs if a mutation occurs.
+
+		//-----------------Direction----------------------
+
+		mutDir =  random();
+		if (mutDir<=0.50) {
+			mutDir = -1;
+		} else {
+			mutDir = 1;
+		}
+
+		//---------------Mutant Gene-------------------
+
+		mutGene = oGene + (mutStr * mutDir); // the mutant gene is oGene =/- the random mutStr
+
+			//-----Clipping------
+			
+			if (mutGene>1) { // Can't go above 1.
+			mutGene = 1;
+				}
+			if (mutGene<0) { // Can't go below 0.
+			mutGene = 0;
+				}
+
+		//print ("                      " + label + ","  + prMut + " Mutation, Gene " +  i  + " = " + oGene + " - > " + mutGene);
+			
+		} else {
+		mutGene=oGene;
+
+		//print ("                      " +label + "," + prMut + " Mutation, Gene " +  i  + " = No Mutation:"+mutGene);
+
+		}
+	// ==========INVERSION===========
+	if(inversionRateT2 > 0){
+	
+	invProb = random();
+		if (invProb<=inversionRateT2) {  // 
+			invertG = 1;
+		} else {
+			invertG = 0;
+		}
+
+
+	if (invertG==1) {
+	mutGene= 1-mutGene;
+
+	//print ("                      		" + label + ","  +  " Inversion, Gene " +  i  + " = " + 1-mutGene + " - > " + mutGene);
+			    }else{
+	
+	//print ("                      " +label + ","  +  " Inversion, Gene " +  i  + " = No Inversion:"+mutGene);
+
+			}
+
+	}
+
+	MutArray[i] = mutGene;
+		} 
+
+	//print ("");
+	// ==========Duplication===========
+
+	if(duplicationRateT2>0){
+	
+	dupLeng=MutArray.length-2;
+	
+	for(DJ=0; DJ<dupLeng; DJ++){
+	
+	dupProb = random();
+	if (dupProb<=duplicationRateT2) {  // 
+			duplicateG = 1;
+	} else {
+			duplicateG = 0;
+		}
+
+
+	if (duplicateG==1) {
+	DuplicatedGene=MutArray[DJ];
+
+	NewIndex = DJ + (random("gaussian")*(dupLeng/2));
+	NewIndex = parseInt(NewIndex);
+	
+		while(NewIndex<0){
+		NewIndex=(dupLeng-1)+NewIndex;
+		}
+		
+		while(NewIndex>dupLeng-1){
+		NewIndex= NewIndex-(dupLeng-1);
+		}
+
+	MutArray[NewIndex]=DuplicatedGene;
+	} 	
+	}}
+
+
+// ==========Unit Duplication ===========
+ 
+ 
+ if(unitNum.length>0 && unitRateT2>0){
+ 
+ unitDup = random();
+	if (unitDup <= unitRateT2) {  // 
+			unitDup = 1;
+	} else {
+			unitDup = 0;
+		}
+		
+if(unitDup==1){		
+ 
+unitSelect = parseInt(random()*(unitNum.length-1));
+
+startPoint = unitStartIndex[unitSelect];
+
+unitSelectionA = Array.slice(unitIndex, startPoint, (startPoint+unitLengths[unitSelect]));
+
+if(unitSelectionA.length>1){
+GeneDupLength = unitSelectionA[1]- unitSelectionA[0];
+
+subUnit1 = parseInt(random()*(unitSelectionA.length-1));
+unitSelectionB=Array.deleteIndex(unitSelectionA, subUnit1);
+subUnit1= unitSelectionA[subUnit1];
+
+
+
+subUnit2 = parseInt(random()*(unitSelectionB.length-1));
+subUnit2 = unitSelectionB[subUnit2];
+
+
+subUnits=newArray(subUnit1,subUnit2);
+
+GeneCopy = Array.slice(MutArray,subUnit1, (subUnit1+GeneDupLength-1));
+GeneCopyLabels =  Array.slice(CT,subUnit1, (subUnit1+GeneDupLength-1));
+
+GenePaste = Array.slice(MutArray,subUnit2, (subUnit2+GeneDupLength-1));
+GenePasteLabels =  Array.slice(CT,subUnit2, (subUnit2+GeneDupLength-1));
+
+GenePostPaste = newArray();
+
+for(x=0; x<GenePaste.length; x++){
+rand=random();
+if(rand<=0.75){
+ratio1 = 101 - (100*Math.sqrt(random()));
+if(crossOverComplete == "incomplete"){
+
+Gene = GeneCopy[x]*ratio1 ;
+oldGene = MutArray[x+subUnit2];
+newGene = (Gene+oldGene)/(1+ratio1);
+
+MutArray[x+subUnit2]=newGene;
+GenePostPaste =Array.concat(GenePostPaste,MutArray[x+subUnit2]);
+} else {
+MutArray[x+subUnit2]=GeneCopy[x];
+GenePostPaste =Array.concat(GenePostPaste,MutArray[x+subUnit2]);
+
+}}else{
+GenePostPaste =Array.concat(GenePostPaste,"old");
+}
+
+}
+
+
+//Array.print(GeneCopyLabels);
+//Array.print(GeneCopy);
+
+//Array.print(GenePasteLabels);
+//Array.print(GenePaste);
+//Array.print(GenePostPaste);
+
+
+}
+
+}
+}
+
+
+
+
+
+
+// ==========Scramble ===========
+if(scrambleRateT2 > 0){
+
+scrambleProb = random();
+	if (scrambleProb <=scrambleRateT2) {  // 
+			scrambleG = 1;
+	} else {
+			scrambleG = 0;
+		}
+
+ 
+if(scrambleG==1){
+
+
+/*
+scrambleLength = parseInt( Math.sqrt( Math.sqr ( random("gaussian") / 5 ) ) );
+scrambleLength= scrambleLength*(MutArray.length-2);
+
+if(scrambleLength>(MutArray.length-2)){
+scrambleLength=(MutArray.length-2);
+}
+
+if(scrambleLength==0){
+scrambleLength=1;
+}
+*/
+
+
+scramblePoint1= ((MutArray.length-2)*random() ); 	// random coordinate 1
+scramblePoint1= parseInt(scramblePoint1);		 // convert to integer
+
+scramblePoint2= ((MutArray.length-2)*random() ); 	// random coordinate 2
+scramblePoint2= parseInt(scramblePoint2);		 // convert to integer
+
+
+scrambleArray1 = newArray(scramblePoint1, scramblePoint2);
+
+scrambleArray1= Array.sort(scrambleArray1);
+
+//print ("		scramble Point 1 = " + scrambleArray1[0] + " scramble Point 2 =" + scrambleArray1[1]);
+
+scrambleOver1 = Array.copy(MutArray);
+
+
+scrambleOver2 = newArray();
+scrambleRandom = newArray();
+
+for(sc=scrambleArray1[0]; sc<=scrambleArray1[1]; sc++){
+
+scrambleOver2 =  Array.concat(scrambleOver2,MutArray[sc]);
+
+scrambleRandom = Array.concat(scrambleRandom, random());
+
+}
+
+scrambleRandom=Array.rankPositions(scrambleRandom);
+
+
+
+for(sc=0; sc<scrambleRandom.length; sc++){
+
+tempStr = scrambleArray1[0] + sc;
+
+tempStr2= scrambleRandom[sc];
+
+scrambleOver1[tempStr] = scrambleOver2[tempStr2];
+
+}
+
+MutArray = scrambleOver1;
+
+}
+}
+
+//-------------------------------
+
+
+	
+	p1loc=MutArray.length-2;
+	p2loc=MutArray.length-1;
+	
+	p1=RankNum1[p1loc];
+	p2=RankNum1[p2loc];
+
+	MutArray[p1loc]=p1;
+	MutArray[p2loc]=p2;
+	
+
+
+
+T2MutantArray = Array.concat(T2MutantArray, label , MutArray); 
+
+}}
+} else {
+
+T2MutantArray= newArray();
+
+}
+
+
+
+
+
+//===========================================================================
+// 5) Immigration
+//===========================================================================
+// This section applies immigration if a crowd operator has been selected.
+//---------------------------------------------------------------------------
+
+
+
+newCrowd=newArray();
+if(crowdOperator!="none"){
+
+NO = 0;
+YES = 0;
+
+for(R=0; R<VoteCrowd.length; R++){
+if(VoteCrowd[R]=="YES"){
+YES=YES+1;
+}
+if(VoteCrowd[R]=="NO"){
+NO=NO+1;
+}
+}
+if(NO>YES){
+crowdThreshold=crowdThreshold+(0.05);
+}
+
+if(YES>NO){
+crowdThreshold=crowdThreshold -(0.5);
+
+if(T2MutantArray.length > 1){
+
+RemoveCrowd=crowdNumber;
+RemoveCrowd=parseInt(RemoveCrowd);
+DeleteLength=F*RemoveCrowd;
+for(l=0; l<DeleteLength; l++){
+str=T2MutantArray.length-1;
+T2MutantArray = Array.deleteIndex(T2MutantArray, str);
+}
+
+}
+
+if(T2MutantArray.length < 1){
+
+RemoveCrowd=crowdNumber;
+
+RemoveCrowd=parseInt(RemoveCrowd);
+
+DeleteLength=F*RemoveCrowd;
+
+for(l=0; l<DeleteLength; l++){
+
+str=T1Array.length-1;
+
+T1Array = Array.deleteIndex(T1Array, str);
+
+}
+
+}
+
+
+newCrowd=newArray();
+
+//____________________________________________________________________
+
+//  Random or Random Mate Operators
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+if(crowdOperator=="random"||crowdOperator=="randomMate"){
+for(k=0; k<RemoveCrowd; k++){
+crowdGenome=newArray(a_length);
+for(i=0; i<a_length; i++){
+if(i<a_length-2){
+crowdGenome[i]=random();
+}else{
+crowdGenome[i]="X";
+}}
+
+sex="";
+if(SexType==1){
+vr1 = k/2;
+vr2 = parseInt(k/2);
+if (vr1 == vr2){
+sex="_M";
+} else {
+sex="_F";
+}
+
+}
+
+label="Gen" + (AI+1) + "_Mut0_ID" + "X" + k + sex;
+
+//____________________________________________________________________
+
+// Random Mate Continued
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+if(crowdOperator=="randomMate"){
+
+p1=CT2[k];
+Parent1 = subArray(Rank_Order, p1, F);
+Parent2 = crowdGenome;
+randGeneArray = newArray(a_length);
+for(i=0; i<a_length; i++)	{
+L = random();
+L = parseInt(L);
+randGeneArray [i] = L;	
+				}
+
+Crossover1 = Array.copy(Parent1);
+Crossover2 = Array.copy(Parent2);
+
+for(i=0; i<a_length; i++)	{
+	L =  parseInt(i);
+	if (randGeneArray[L] ==1){
+	Crossover1[i] = Parent2[i];
+	Crossover2[i] = Parent1[i];
+
+				}
+	
+
+	}
+
+crowdGenome=Crossover1;
+crowdGenome[crowdGenome.length-2]="Par_"+p1;
+crowdGenome[crowdGenome.length-1]="Par_X";
+}
+newCrowd=Array.concat(newCrowd,label,crowdGenome);
+}}
+
+//____________________________________________________________________
+
+// Mutant Region Operator
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+if(crowdOperator=="mutantRegion"){
+for(k=0; k<RemoveCrowd; k++){
+crowdGenome=subArray(Rank_Order, CT2[k], F);
+
+region1=parseInt(random()*(F-1));
+if(region1>=F-1){
+region1=0;
+}
+
+region2=parseInt(random()*(F-1)/2)+region1;
+if(region2>F-1){
+region2=F-1;
+}
+
+for(i=region1; i<region2; i++)	{
+	str=crowdGenome[i];
+	val=parseFloat(str);
+	mut=(random("gaussian")/4);
+	crowdGenome[i]=val+mut;
+		if (crowdGenome[i]>1) { // Can't go above 1.
+			crowdGenome[i] = 1;
+				}
+			if (crowdGenome[i]<0) { // Can't go below 0.
+			crowdGenome[i] = 0;
+				}
+	
+				}
+
+crowdGenome[crowdGenome.length-2]="Par_"+CT2[k];
+crowdGenome[crowdGenome.length-1]="Par_X";
+label="Gen" + (AI+1) + "_Mut0_ID" + "X" + k;
+newCrowd=Array.concat(newCrowd,label,crowdGenome);
+}
+}
+k1=0;
+
+//____________________________________________________________________
+
+//Mutant Mate Operator
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+if(crowdOperator=="mutantMate"){
+mutDir=1;
+for(k=0; k<RemoveCrowd/2; k++){
+
+crowdGenome=subArray(Rank_Order, CT2[k], F);
+
+Parent1=subArray(Rank_Order, CT2[k], F);
+Parent2=subArray(Rank_Order, CT2[k], F);
+
+
+for(i=0; i<Parent2.length; i++){
+
+mutDir =  random();
+		if (mutDir<=0.50) {
+			mutDir = -1;
+		} else {
+			mutDir = 1;
+		}
+
+
+val=Parent2[i];
+val=parseFloat(val);
+
+mod=YES-NO;
+mod = exp(1+(1-mod));
+mod = mod+3;
+
+mut=exp(random())/9;
+
+
+Parent2[i]=val+(mut*mutDir);
+
+	if (Parent2[i]>1) { // Can't go above 1.
+			Parent2[i] = 1;
+				}
+			if (Parent2[i]<0) { // Can't go below 0.
+			Parent2[i] = 0;
+				}
+	
+
+
+}
+
+
+region1=parseInt(random()*(F-1));
+if(region1>=F-1){
+region1=0;
+}
+
+region2=parseInt(random()*(F-1)/1.5)+region1;
+if(region2>F-1){
+region2=F-1;
+}
+
+Offspring1=Array.copy(Parent1);
+Offspring2=Array.copy(Parent2);
+
+for(i=region1; i<region2; i++)	{
+st1=Parent1[i];
+st2=Parent2[i];
+
+
+ratio1 = 101 - (100*Math.sqrt(random()));
+
+if(crossOverComplete == "incomplete"){
+
+gen1=parseFloat( Parent2[i] ) * ratio1;
+gen2=parseFloat( Parent1[i] )* ratio1;
+
+Crossover1[i] = (gen1+st2)/(1+ratio1); // new Version that allows for rarer crossover within the same gene.
+Crossover2[i] = (gen2+st2)/(1+ratio1);
+
+} else {
+
+Offspring1[i] = st2;
+Offspring2[i] = st1;	
+
+}
+
+				}
+				
+				
+sex1="";
+sex2="";
+if(SexType==1){
+sex1="_M";
+sex2="_F";
+}
+		
+				
+k1=k1+1;
+
+label1="Gen" + (AI+1) + "_Mut0_ID" + "X" + k1 + sex1;
+
+k1=k1+1;
+
+label2="Gen" + (AI+1) + "_Mut0_ID" + "X" + k1 + sex2;
+
+Offspring1[crowdGenome.length-2]="Par_"+CT2[k];
+Offspring1[crowdGenome.length-1]="Par_X";
+
+Offspring2[crowdGenome.length-2]="Par_"+CT2[k];
+Offspring2[crowdGenome.length-1]="Par_X";
+
+newCrowd=Array.concat(newCrowd,label1,Offspring1,label2,Offspring2);
+}
+}
+
+
+//____________________________________________________________________
+
+// Dextinction Operators
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+if(crowdOperator=="dextinction"){
+mutDir=1;
+for(k=0; k<RemoveCrowd/2; k++){
+
+crowdGenome=subArray(Rank_Order, CT2[k], F);
+
+
+timeGate=0;
+genSubtract = 6;
+//Perform Resurrection
+
+
+while(timeGate==0){
+resurrectionDirect = configFilePath + "generation_" +(AI - genSubtract) + txt;
+if(File.exists(resurrectionDirect)){
+
+oldPopulation = File.openAsString(resurrectionDirect);
+oldIndividuals = split(oldPopulation, "\n");
+
+//Array.show(oldIndividuals);
+
+oldIndividual = split(oldIndividuals[1+k], "\t");
+
+//Array.show(oldIndividual);
+
+timeGate=1;
+
+Parent1 = Array.deleteIndex(oldIndividual, 0);
+
+} else {
+genSubtract=genSubtract-1;
+}
+
+}
+
+
+
+//Parent1=subArray(Rank_Order, CT2[k], F);
+Parent2=subArray(Rank_Order, CT2[k], F);
+
+region1=parseInt(random()*(F-1));
+if(region1>=F-1){
+region1=0;
+}
+
+region2=parseInt(random()*(F-1)/1.5)+region1;
+if(region2>F-1){
+region2=F-1;
+}
+
+Offspring1=Array.copy(Parent1);
+Offspring2=Array.copy(Parent2);
+
+for(i=region1; i<region2; i++)	{
+st1=Parent1[i];
+st2=Parent2[i];
+
+
+ratio1 = 101 - (100*Math.sqrt(random()));
+
+if(crossOverComplete == "incomplete"){
+
+gen1=parseFloat( Parent2[i] ) * ratio1;
+gen2=parseFloat( Parent1[i] )* ratio1;
+
+Crossover1[i] = (gen1+st2)/(1+ratio1); // new Version that allows for rarer crossover within the same gene.
+Crossover2[i] = (gen2+st2)/(1+ratio1);
+
+} else {
+
+Offspring1[i] = st2;
+Offspring2[i] = st1;	
+
+}
+
+				}
+				
+				
+sex1="";
+sex2="";
+if(SexType==1){
+sex1="_M";
+sex2="_F";
+}
+		
+				
+k1=k1+1;
+
+label1="Gen" + (AI+1) + "_Mut0_ID" + "X" + k1 + sex1;
+
+k1=k1+1;
+
+label2="Gen" + (AI+1) + "_Mut0_ID" + "X" + k1 + sex2;
+
+Offspring1[crowdGenome.length-2]="Par_"+CT2[k];
+Offspring1[crowdGenome.length-1]="Par_X";
+
+Offspring2[crowdGenome.length-2]="Par_"+CT2[k];
+Offspring2[crowdGenome.length-1]="Par_X";
+
+newCrowd=Array.concat(newCrowd,label1,Offspring1,label2,Offspring2);
+}
+}
+}
+}
+
+
+
+//===========================================================================
+// 6) Create the new Population
+//===========================================================================
+// This section concats the arrays to make the next population.
+//---------------------------------------------------------------------------
+
+
+//____________________________________________________________________
+
+// Concat Arrays
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+
+Generation_New = Array.concat(T3Array, T2MutantArray, newCrowd, OffspringMutantArray);
+
+
+
+
+//____________________________________________________________________
+
+// Find all of the Individual ID indexes
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+
+Titles = newArray();
+
+for (i = 0 ; i < Generation_New.length; i++){
+
+if(startsWith(Generation_New[i], "Gen")==1){
+Nam = Generation_New[i];
+
+Titles= Array.concat(Titles, Nam);
+
+}
+
+if(startsWith(Generation_New[i], "Gen")==1){
+Nam = Generation_New[i];
+
+Titles= Array.concat(Titles, Nam);
+
+}
+
+}
+
+
+CT5 = newArray();
+F5 = 0;
+
+for (i = 0 ; i < Generation_New.length; i++){
+
+if(startsWith(Generation_New[i], "Gen")==1){
+F5 = F5 + 1;
+Nam = Generation_New[i];
+
+CT5= Array.concat(CT5, Nam);
+
+} }
+
+
+//____________________________________________________________________
+
+// Convert the array back into a table of genes
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+Generation_New2 = newArray();
+
+for (i = 0; i < CT5.length; i++){
+temp1 = subArray(Generation_New, CT5[i], F);
+temp=newArray();
+for(f=0; f<temp1.length;f++){
+if(f<temp1.length-2){
+str = d2s(temp1[f], 10);
+}else{
+str = temp1[f];
+}
+temp=Array.concat(temp, str);
+}
+
+temp = Array.concat(CT5[i], temp);
+temp = String.join(temp,"\t");
+
+Generation_New2 = Array.concat(Generation_New2, temp);
+
+}
+
+TitleNames = String.join(CT, "\t");
+
+Generation_New2 = Array.concat(TitleNames,Generation_New2);
+
+
+
+//____________________________________________________________________
+
+// Save the new Generation
+//,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+
+
+	dataFile = File.open(nPth);
+	
+	for(i=0; i<Generation_New2.length; i++){
+	print(dataFile, Generation_New2[i]);
+	}
+	File.close(dataFile);
+
+	
+
+
+wait(10);
+
+
+
+//===========================================================================
+// 7) Save Adaptation Settings
+//===========================================================================
+// This section concats the arrays to make the next population.
+//---------------------------------------------------------------------------
+
+
+if(Adaptive == 1){
+
+if(VoteMate.length < 1){
+MatingSystemChoice = "random";
+} else {
+
+VoteLast = VoteMate;
+
+RAND = 0;
+NEAR = 0;
+FAR = 0;
+
+//Array.print(VoteLast);
+
+for(R=0; R<VoteLast.length; R++){
+if(VoteLast[R]=="RAND"){
+RAND=RAND+1;
+}
+if(VoteLast[R]=="NEAR"){
+NEAR=NEAR+1;
+}
+if(VoteLast[R]=="FAR"){
+FAR=FAR+1;
+}
+}
+
+MatingSystemChoice = "random";
+
+if(NEAR>RAND && NEAR>FAR){
+MatingSystemChoice = "assortative";
+}
+
+if(FAR>RAND && FAR>NEAR){
+MatingSystemChoice = "disassortative";
+}
+
+
+
+
+
+}
+}
+
+
+
+settingsFilePath = configFilePath + "AdaptationSettings.txt";
+
+// SAVE PREVIOUSLY USED SETTINGS
+	File.append("\tgeneration_" + (AI+1), settingsFilePath);
+	File.append(SexType, settingsFilePath);
+	File.append(popChoice   , settingsFilePath);
+	File.append(popSizeChoice    , settingsFilePath);
+	File.append(popTypeChoice   , settingsFilePath);
+	File.append(unitChoice    , settingsFilePath);
+	File.append(DeletionSize  , settingsFilePath);
+	File.append(BreedingSize   , settingsFilePath);
+	File.append(numberGenerations   , settingsFilePath);
+	File.append(d2s(mutRateOffs,10)  , settingsFilePath);
+	File.append(d2s(mutRateT2,10)   , settingsFilePath);
+	File.append(mutDistOffs  , settingsFilePath);
+	File.append(mutDistT2   , settingsFilePath);
+	File.append(mutStrengthOffs1   , settingsFilePath);
+	File.append(mutStrengthT21  , settingsFilePath);
+	File.append(mutStrengthOffs2   , settingsFilePath);
+	File.append(mutStrengthT22   , settingsFilePath);
+	File.append(mutStrengthOffs3   , settingsFilePath);
+	File.append(mutStrengthT23   , settingsFilePath);
+	File.append(crossOver   , settingsFilePath);
+	File.append(d2s(crossOverProb,10)  , settingsFilePath);
+	File.append(crossOverComplete   , settingsFilePath);
+	File.append(MatingSystemChoice  , settingsFilePath);
+	File.append(ALPHA  , settingsFilePath);
+	File.append(BETA   , settingsFilePath);
+
+	File.append(d2s(inversionRateOffs,10)  , settingsFilePath);
+	File.append(d2s(inversionRateT2,10)   , settingsFilePath);
+	File.append(d2s(duplicationRateOffs,10)   , settingsFilePath);
+	File.append(d2s(duplicationRateT2,10)   , settingsFilePath);
+	File.append(d2s(scrambleRateOffs,10)   , settingsFilePath);
+	File.append(d2s(scrambleRateT2,10)   , settingsFilePath);
+	File.append(d2s(unitRateOffs,10)  , settingsFilePath);
+	File.append(d2s(unitRateT2,10)  , settingsFilePath);
+	File.append(crowdOperator  , settingsFilePath);
+	File.append(crowdThreshold , settingsFilePath);
+	File.append(crowdNumber   , settingsFilePath);
+
+
+}
+
+setBatchMode(true);
+
+

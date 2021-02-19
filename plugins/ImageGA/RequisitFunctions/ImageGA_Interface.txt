@@ -1,0 +1,1639 @@
+/*____________________________________________________________________
+
+	Title: ImageGA Interface
+	Authors:  George Hancock 
+	Date: 05/01/2021
+	
+.................................................................................................................
+
+Description:
+''''''''''''''''''''''''''''''''
+This code allows the user to change the algorithm settings and population location that will be used by ImageGA
+
+*/
+
+
+
+setOption("ShowRowNumbers", false);
+
+
+
+//============================================================================
+// Make file names easier to handle.
+//============================================================================
+
+csv = ".csv";
+tif = ".tif";
+txt = ".txt"'
+png = ".png"
+
+//----------------------------------------------------------------------------
+
+
+
+
+//============================================================================
+// FUNCTIONS
+//============================================================================
+setOption("ShowRowNumbers", false);
+setOption("ShowRowIndexes", false);
+
+
+// TestPoint
+//---------------------------------------------------
+// Allows you to obtain the index of a Value within an Array.
+
+function TestPoint(Title) {
+Dialog.createNonBlocking("TestPoint");
+Dialog.createNonBlocking("Did " + Title + " work?");
+Dialog.show();
+
+}
+
+
+// Index
+//---------------------------------------------------
+// Allows you to obtain the index of a Value within an Array.
+
+  function index(a, value) {
+      for (i=0; i<a.length; i++)
+          if (a[i]==value) return i;
+      return -1;
+  }
+
+// Obtain SubArray
+//---------------------------------------------------
+// Allows you to obtain a SubArray of a given Name and Length, where a is the array and b is the original number of rows.
+
+ function subArray(a, value, b) {
+	IndexLab = index(a, value);
+	Start = IndexLab + 1;
+	End = IndexLab  + b;
+	return Array.slice(a, Start, End);
+}
+
+// Obtain Table Names Array
+//---------------------------------------------------
+// Allows you to obtain an array of all the table column names
+
+ function getColumnNames(name) {
+	selectWindow(name);
+	Table.showRowNumbers(false);
+	name = Table.headings;
+	name = split(name, "\t");
+	Table.showRowNumbers(false);
+	return name; 
+}
+
+// Obtain Row Length
+//---------------------------------------------------
+// Allows you to obtain the length of a row in a table.
+
+ function getRowLength(name) {
+
+	Nam = getColumnNames(name);
+	strCol = Table.getColumn(Nam[0]);
+	length = lengthOf (strCol);
+	return length; 
+}
+
+
+
+//Table to Array
+//--------------------------------------------------
+// Converts a Table into a Super Array, dividing them by the column titles.
+
+ function tableArrayConvert(TableName) {
+	selectWindow(TableName);
+	Table.showRowNumbers(false);
+	ColNams = Table.headings;
+	ColNams = split(ColNams, "\t");
+
+	Tp = newArray();
+	
+	 for (i=0; i<ColNams.length; i++){
+
+	Tm = ColNams[i];
+
+	Tp2 = newArray(Tm);
+
+	Tp3 = Table.getColumn(Tm);
+
+	Tp = Array.concat(Tp, Tp2, Tp3);
+	
+	}
+        	
+	Table.showRowNumbers(false);
+	return Tp;
+	
+	}
+
+//Rotate Super Array
+//--------------------------------------------------
+
+function rotateSuperArray (a, Titles) {
+
+	M1 = Titles[1];
+
+	labelA = Titles[0];
+
+	M3 =  index(a, M1)-1;
+	
+	b=Array.copy(a);
+
+	for (i=0; i<Titles.length; i++){
+		b = Array.deleteValue(b, Titles[i]);
+	}
+
+	arrTemp = newArray();
+
+		for (i=0; i<M3; i++){
+
+		arrTemp2 = newArray();
+	
+		for(j=0; j<Titles.length; j++){
+
+		mod = i +(j*M3);
+
+		arrTemp2 = Array.concat(arrTemp2, b[mod]);
+
+			}
+
+			labelB =labelA + i;
+			labelC= newArray(labelB);
+
+			arrTemp = Array.concat(arrTemp, arrTemp2);
+
+
+			} 
+	
+	return arrTemp;
+	
+			}
+
+
+//Reverse Rotate Super Array
+//--------------------------------------------------
+
+// Undoes the rotation of the super Array.
+
+function rotateRevSuperArray (a, Titles, rowLength) {
+	
+		rowL= rowLength;
+		
+		titleL= Titles.length;
+	
+	//Array.show(a);
+
+	arrTemp = newArray();
+
+		for (i=1; i<titleL; i++){
+
+		arrTemp2 = newArray("Nan");
+	
+		for(j=0; j<rowL; j++){
+
+			mod = i +(j*(titleL));
+
+			arrTemp2 = Array.concat(arrTemp2, a[mod]);
+
+			}
+
+			arrTemp2[0] = Titles[i];
+
+			//Array.print(arrTemp2);
+
+			arrTemp = Array.concat(arrTemp,arrTemp2);
+
+
+			} 
+
+	arrTemp3 = newArray();
+
+	for (i=0; i<rowL; i++){
+
+		Mult = i*(Titles.length);
+
+		Nam = a[Mult];
+		
+		arrTemp3 = Array.concat(arrTemp3, Nam );
+
+					}
+
+	
+	arrTemp3 = Array.concat(Titles[0], arrTemp3);
+
+	arrTemp = Array.concat(arrTemp3, arrTemp);
+	
+	return arrTemp;
+	
+			}
+
+
+//Rotate Table
+//--------------------------------------------------
+
+// Flips the axis of a Table.
+
+function tableRotateVertical(TableOld, TableNew) {
+
+	Table.create(TableNew);
+	Table.showRowNumbers(false);
+
+	arrRow = getColumnNames(TableOld);
+
+	strCol = getRowLength(TableOld);
+
+	outputArray = newArray(arrRow.length-1);
+
+	for(j=0; j<strCol; j++){
+
+	selectWindow(TableOld);
+
+	for(k=1; k<arrRow.length; k++){
+			T = k;
+			CN = arrRow[T];
+			outputArray[k-1] = getResult(CN, j);
+		}
+
+	selectWindow(TableNew);
+	
+	Label = arrRow[0] + "_" +  (j);
+
+	Table.setColumn(Label, outputArray);
+
+	}
+	
+	}
+
+
+//Super Array to Table
+//--------------------------------------------------
+// Converts a Super Array back into a table using the Array of original titles.
+
+function tableArrayRevert (TableName, a, Titles) {
+
+	Table.create(TableName);
+	Table.showRowNumbers(false);
+
+	M1 = index(a, Titles[0]);
+
+	M2 = index(a, Titles[1]);
+
+	M3 = M2 - M1;
+
+	for (i=0; i<Titles.length; i++){
+
+	columnName = Titles[i];
+	
+	array = subArray(a, columnName, M3);
+
+	Table.setColumn(columnName, array);
+
+	}
+
+}
+
+//----------------------------------------------------------------------------
+
+
+
+
+//============================================================================
+// Load Previous values
+//============================================================================
+settingsFilePath = getDirectory("plugins") + "ImageGA/RequisitFunctions/AlgorithmSettings.txt";
+if(File.exists(settingsFilePath) == 1){
+	settingsString=File.openAsString(settingsFilePath);	// open txt data file
+	defaultSettings=split(settingsString, "\n");
+} else  defaultSettings = newArray(
+
+"0", 				// Bilogical Sex (yes or no)
+
+"Create Custom", 	// Use Template 
+"24", 					// Population Size
+"random", 				// Population Genotype
+
+"percentage",			// Pool Unit
+"0.500", 				// Deletion Pool	
+"0.500", 				// Mating Pool
+
+"10",				// Number of Generations
+
+"0.001",			// Offspring Mutation Rate
+"0.005",			// Non-Breed Mutation Rate
+
+
+"normal",			// Offspring Mutation Distribution
+"normal",			// Non-Breed Mutation Distribution
+
+"4",				// Offspring Mutation Str (uniform)
+"4",				// Non-Breed Mutation Str 
+
+"8",				// Offspring Mutation Str (normal)
+"8",				// Non-Breed Mutation Str 
+
+"8",				// Offspring Mutation Str (poisson)
+"8",				// Non-Breed Mutation Str 
+
+"Two Point", 			// Crossover Type 
+"1",					// Crossover Probability
+"Incomplete",			// Recombination Completeness
+
+
+"random", 			// Mating System
+"1.1", 					// ALPHA
+"1.9", 					// BETA
+
+"0", 				// Offspring Inversion Mutation Rate
+"0", 				// Non-Breed Inversion Mutation Rate
+
+"0", 				// Offspring Duplication Mutation Rate
+"0", 				// Non-Breed Duplication Mutation Rate
+
+"0", 				// Offspring Scramble Mutation Rate
+"0", 				// Non-Breed Scramble Mutation Rate
+
+"0", 				// Offspring Unit Duplication Mutation Rate
+"0", 				// Non-Breed Unit Duplication Mutation Rate
+
+
+"none", 			// Crowd Operator
+"0.9", 					// DELTA
+"4"  );					// Crowd Number Removed
+ 
+
+
+//----------------------------------------------------------------------------
+
+
+//===========================================================================
+// Choose Population Location
+//============================================================================
+
+
+Dialog.create("Choose Directory");
+		Dialog.addMessage("________________Choose Folder___________________");
+		Dialog.addMessage("Select directory you would like your Generations to be stored.");
+	Dialog.show();
+
+
+imageDIR = getDirectory("Select folder you wish to use.");
+configFilePath=imageDIR;
+tempString = "select=["+ configFilePath+"]";
+//print(configFilePath);
+
+
+PopulationLocation = getDirectory("plugins") + "ImageGA/RequisitFunctions/PopulationLocation.txt";
+
+// SAVE PATH
+
+dataFile = File.open(PopulationLocation);
+
+	print(dataFile, imageDIR);
+
+File.close(dataFile);
+
+
+
+//===========================================================================
+// Select Genotype Template
+//============================================================================
+
+
+
+TemplatePath = getDirectory("plugins") + "ImageGA/Fitness Calculators/Population_Templates/";
+
+TemplateList = getFileList(TemplatePath);
+
+Dialog.create("Genoytpe Template");
+	Dialog.addMessage("________________Choose Template___________________");
+		Dialog.addMessage("Select the .csv / .txt file you'd like to use as the template for your population");
+		Dialog.addChoice("													 ", TemplateList, TemplateList[0]);
+	Dialog.show();
+
+
+
+templateGenes=Dialog.getChoice(); // get file location
+
+templateGenes=TemplatePath+templateGenes;
+
+open(templateGenes);
+Template = File.name;
+selectWindow(Template); 
+
+FileType = split(Template, ".");
+FileType = "." + FileType[1];
+ 
+if(FileType == csv){
+Table.rename(Template,"Results"); 
+Table.showRowNumbers(false);
+
+
+Template_Titles = Table.headings; // Obtains the number of titles.
+	
+Template_Array = split(Template_Titles, "\t");
+Template_Array2 = Array.copy(Template_Array);
+TLeng = lengthOf(Template_Array);
+TLeng = parseInt(TLeng);
+CLeng = Table.getColumn("ID");
+CLeng = CLeng.length;
+
+selectWindow("Results"); 
+run("Close");
+
+} else {
+
+if (FileType == txt) {
+
+TemplateString=File.openAsString(templateGenes);	// open txt data file
+TemplateRows=split(TemplateString, "\n");
+
+Template_Array = split(TemplateRows[0], "\t");
+Template_Array2 = Array.copy(Template_Array);
+
+TLeng = lengthOf(Template_Array);
+TLeng = parseInt(TLeng);
+CLeng = TemplateRows.length-1;
+
+
+selectWindow(Template); 
+run("Close");
+
+}
+}
+
+
+//===========================================================================
+// Use Sex
+//============================================================================
+
+
+Dialog.create("Biological Sex");
+Dialog.addMessage(    "________________(1) Biological Sex___________________");
+	Dialog.addMessage("Choose whether or not to enable or disable biological sex");
+	Dialog.addMessage("If enabled the population will be divided into males and females");
+	Dialog.addMessage("Males can only mate with females and vice versa");
+	Dialog.addCheckbox("Enable Sex", defaultSettings[0]);
+Dialog.show();
+
+SexType = Dialog.getCheckbox();
+
+
+
+//===========================================================================
+// Create Starting Population
+//============================================================================
+
+
+PopChoices = newArray("Use Existing", "Create Custom");
+
+Dialog.create("Starting Population Template");
+	Dialog.addMessage("________________(2) Starting Population Values___________________");
+		Dialog.addMessage("Would you like to use the existing values within the template or create new values?");
+		Dialog.addMessage("(If you choose Use Existing, it will use the existing population size and gene values)");
+		Dialog.addChoice("", PopChoices, defaultSettings[1]);
+	Dialog.show();
+
+popChoice = Dialog.getChoice();
+
+
+
+if(popChoice == PopChoices[0]){
+
+	if(FileType==csv){
+	open(templateGenes);
+	
+	Gen0Lables = newArray();
+	ParentLables = newArray();
+	ColumnNone = newArray();
+	for(i=0; i<CLeng; i++){
+	
+		sex="";
+		if(SexType==1){
+		vr1 = i/2;
+		vr2 = parseInt(i/2);
+		if (vr1 == vr2){
+		sex="_M";
+		} else {
+		sex="_F";
+		}
+
+		}
+		
+	Gen0Lables = Array.concat(Gen0Lables, "Gen0_Mut0_ID"+i+sex);
+	ParentLables = Array.concat(Gen0Lables, "none");
+
+	ColumnNone= Array.concat(ColumnNone, "none");
+	}
+	Table.setColumn("ID", Gen0Lables);
+	Table.setColumn("Parent1", ParentLables);
+	Table.setColumn("Parent2", ParentLables);
+	
+	StartingGen = configFilePath + "generation_0" + txt;
+	saveAs("Results",StartingGen);
+	
+	selectWindow("generation_0" + txt); //-------------Cull the uneeded tables.
+		run("Close");
+	}
+	
+	if(FileType==txt){
+	
+	Gen0Lables = newArray();
+	for(i=0; i<CLeng; i++){
+	
+		sex="";
+		if(SexType==1){
+		vr1 = i/2;
+		vr2 = parseInt(i/2);
+		if (vr1 == vr2){
+		sex="_M";
+		} else {
+		sex="_F";
+		}
+
+		}
+		
+	Gen0Lables = Array.concat(Gen0Lables, "Gen0_Mut0_ID"+i+sex);
+	}
+	
+	
+	TemplateString=File.openAsString(templateGenes);	// open txt data file
+	TemplateRows=split(TemplateString, "\n");
+	
+	Generation0Rows = newArray();
+	
+	//Parent Check
+	LastTitle=split(TemplateRows[0],"\t");
+	LastTitle=LastTitle[LastTitle.length-1];
+	if( LastTitle != "Parent2"){
+	appendParents=newArray("Parent1","Parent2");
+	appendEntry=newArray("none","none");
+	}else{
+	appendParents=newArray();
+	appendEntry=newArray();
+	}
+	
+	for(i=0; i<TemplateRows.length; i++){
+	if(i==0){
+	temp = split(TemplateRows[i], "\t");
+	temp = Array.concat(temp,appendParents);
+	temp = String.join(temp,"\t");
+	Generation0Rows=Array.concat(Generation0Rows, temp);
+	}
+	if(i>0){
+	temp = split(TemplateRows[i], "\t");
+	temp[0] = Gen0Lables[i-1];
+	temp = Array.concat(temp,appendEntry);
+	temp = String.join(temp,"\t");
+	Generation0Rows=Array.concat(Generation0Rows, temp);
+	}
+	}
+	StartingGen = configFilePath + "generation_0" + txt;
+	
+	dataFile = File.open(StartingGen);
+	
+	for(i=0; i<TemplateRows.length; i++){
+	print(dataFile, Generation0Rows[i]);
+	}
+	File.close(dataFile);
+
+	
+	}
+
+	
+
+	popSizeChoice = defaultSettings[2];
+	popTypeChoice = defaultSettings[3];
+				
+	popSize = Table.size-1;
+	
+		}else{
+
+popTypes = newArray("random",  "standard", "mutant");
+
+
+Dialog.create("Population Settings");
+
+		Dialog.addMessage("___________________(2.1) Population Size_____________________");
+		Dialog.addMessage("The Number of Individuals in each Population. (number has to be divisible by 6)");
+		Dialog.addNumber("                                                                              Population Size N = ", defaultSettings[2]);
+		
+		Dialog.addMessage("___________________(2.2) Population Types____________________");
+		Dialog.addMessage("Determines the range of different Genotypes within the Starting Population \n            random: each gene is a random number between 0-1\n            standard: each individual starts with a preset value for each gene\n            mutant: standard with random gaussian applied");
+		Dialog.addChoice("                                                                                     Population Type ", popTypes, defaultSettings[3]);
+	
+
+	Dialog.show();
+
+popSizeChoice = Dialog.getNumber();
+popTypeChoice = Dialog.getChoice();
+
+
+popSize = parseInt(popSizeChoice);
+TLeng =parseInt(TLeng);
+
+//--------------------------------------------------------------------------
+
+Table.create("generation_0");
+Table.showRowNumbers(false);
+Table.rename("generation_0","Results");  //RENAME
+Table.showRowNumbers(false);
+selectWindow("Results"); 
+
+
+//------------- IF RANDOM -----------------------------------
+
+if (popTypeChoice=="random")	{
+column = newArray (popSize);
+	
+	for(i=0; i<popSize; i++){
+	Label = "ID";
+	
+			sex="";
+		if(SexType==1){
+		vr1 = i/2;
+		vr2 = parseInt(i/2);
+		if (vr1 == vr2){
+		sex="_M";
+		} else {
+		sex="_F";
+		}
+
+		}
+	
+	column[i] = "Gen0_Mut0_ID"+i+sex;
+	Table.setColumn(Label, column);
+	
+				}
+
+	
+	for(i=0; i<popSize; i++)	{
+
+		for(k=1; k<TLeng; k++)	{
+				column = newArray (popSize);
+				row = i;
+				Value = random();
+				Label = Template_Array[k];
+				Table.set(Label, row, Value);
+						}
+					} // loop end	
+	
+
+	for(i=0; i<popSize; i++){
+	column[i] = "none";
+	Table.setColumn("Parent1", column);
+	Table.setColumn("Parent2", column);
+				}
+
+
+
+
+
+				} 
+
+//------------- IF STANDARD -----------------------------------
+
+if (popTypeChoice=="standard")	{
+	column = newArray (popSize);
+
+	if(TLeng <= 27){
+	
+	//ONLY NEEDS PART 1
+	Dialog.create("Set Values");
+	Dialog.addMessage("Give each gene a decimal value between 0 and 1");
+	for(k=1; k<TLeng; k++)	{
+	Label = Template_Array[k];
+	Dialog.addNumber(Label, 0.5);
+					}
+	Dialog.show();
+
+	StandardVal = newArray(TLeng);
+	for(k=1; k<TLeng; k++)	{
+	StandardVal[k] = Dialog.getNumber();
+	}
+
+	///NEEDS 2 PARTS
+	} else {
+	
+	//PART 1
+	Dialog.create("Set Values Part 1");
+	Dialog.addMessage("Give each gene a decimal value between 0 and 1");
+	
+	for(k=1; k<27; k++)	{
+	Label = Template_Array[k];
+	Dialog.addNumber(Label, 0.5);
+					}
+	Dialog.show();
+
+	StandardVal = newArray(TLeng);
+	for(k=1; k<27; k++)	{
+	StandardVal[k] = Dialog.getNumber();
+	}
+	
+	// PART 2
+	Dialog.create("Set Values Part 2");
+	Dialog.addMessage("Give each gene a decimal value between 0 and 1");
+	for(k=27; k<TLeng; k++)	{
+	Label = Template_Array[k];
+	Dialog.addNumber(Label, 0.5);
+					}
+	Dialog.show();
+
+	for(k=27; k<TLeng; k++)	{
+	StandardVal[k] = Dialog.getNumber();
+	}
+		}
+	
+	//Array.show (StandardVal);
+	
+
+	
+	for(i=0; i<popSize; i++){
+	Label = "ID";
+				sex="";
+		if(SexType==1){
+		vr1 = i/2;
+		vr2 = parseInt(i/2);
+		if (vr1 == vr2){
+		sex="_M";
+		} else {
+		sex="_F";
+		}
+
+		}
+	
+	column[i] = "Gen0_Mut0_ID"+i+sex;
+	Table.setColumn(Label, column);
+	
+	
+				}
+
+	
+	for(i=0; i<popSize; i++)	{
+
+		for(k=1; k<TLeng; k++)	{
+				column = newArray (popSize);
+				row = i;
+				Value = StandardVal[k];
+				Label = Template_Array[k];
+				Table.set(Label, row, Value);
+						}
+					} // loop end	
+	
+	for(i=0; i<popSize; i++){
+	column[i] = "none";
+	Table.setColumn("Parent1", column);
+	Table.setColumn("Parent2", column);
+				}
+
+
+				} 
+
+
+//------------- IF MUTANT -----------------------------------
+
+if (popTypeChoice=="mutant")	{
+
+column = newArray (popSize);
+
+	if(TLeng <= 27){
+	
+	//ONLY NEEDS PART 1
+	Dialog.create("Set Values");
+	Dialog.addMessage("Give each gene a decimal value between 0 and 1");
+	for(k=1; k<TLeng; k++)	{
+	Label = Template_Array[k];
+	Dialog.addNumber(Label, 0.5);
+					}
+	Dialog.show();
+
+	StandardVal = newArray(TLeng);
+	for(k=1; k<TLeng; k++)	{
+	StandardVal[k] = Dialog.getNumber();
+	}
+
+	///NEEDS 2 PARTS
+	} else {
+	
+	//PART 1
+	Dialog.create("Set Values Part 1");
+	Dialog.addMessage("Give each gene a decimal value between 0 and 1");
+	Dialog.addMessage("For each individuals genes will undergo random gaussian mutation");
+	
+	for(k=1; k<27; k++)	{
+	Label = Template_Array[k];
+	Dialog.addNumber(Label, 0.5);
+					}
+	Dialog.show();
+
+	StandardVal = newArray(TLeng);
+	for(k=1; k<27; k++)	{
+	StandardVal[k] = Dialog.getNumber();
+	}
+	
+	// PART 2
+	Dialog.create("Set Values Part 2");
+	Dialog.addMessage("Give each gene a decimal value between 0 and 1");
+	Dialog.addMessage("For each individuals genes will undergo random gaussian mutation");
+
+	for(k=27; k<TLeng; k++)	{
+	Label = Template_Array[k];
+	Dialog.addNumber(Label, 0.5);
+					}
+	Dialog.show();
+
+	for(k=27; k<TLeng; k++)	{
+	StandardVal[k] = Dialog.getNumber();
+	}
+		}
+
+	//MUTATION STR
+	Dialog.create("Set Mutation Strength");
+	Dialog.addMessage("Set the strength of mutation, (all mutations below or above 0 and 1 respectively will default to 0 if below and 1 if above.");
+	Dialog.addMessage("Mutation Strength = random(gaussian)  / X");
+	Dialog.addNumber("X  =", 6);
+	Dialog.show();
+
+	popMutStr = Dialog.getNumber();
+
+	
+	for(i=0; i<popSize; i++){
+	Label = "ID";
+				sex="";
+		if(SexType==1){
+		vr1 = i/2;
+		vr2 = parseInt(i/2);
+		if (vr1 == vr2){
+		sex="_M";
+		} else {
+		sex="_F";
+		}
+
+		}
+	
+	column[i] = "Gen0_Mut0_ID"+i+sex;
+	Table.setColumn(Label, column);
+	
+	
+				}
+
+	
+	for(i=0; i<popSize; i++)	{
+
+		for(k=1; k<TLeng; k++)	{
+				column = newArray (popSize);
+				row = i;
+				Value = StandardVal[k];
+
+				//MUTATION
+				Value = Value + ( random("gaussian")  /   popMutStr  );
+				
+					if (Value>1) { // Can't go above 1.
+					Value  = 1;
+						}
+					if (Value<0) { // Can't go below 0.
+					Value = 0;
+						}		
+
+				Label = Template_Array[k];
+				Table.set(Label, row, Value);
+						}
+					} // loop end	
+	
+	
+	for(i=0; i<popSize; i++){
+	column[i] = "none";
+	Table.setColumn("Parent1", column);
+	Table.setColumn("Parent2", column);
+				}
+
+
+	
+	
+	
+				} 
+
+
+
+//-----------------------------------------------------------------------
+// Save Generation_0
+//------------------------------------------------------------------------
+Table.rename("Results","generation_0");  //RENAME
+Table.showRowNumbers(false);
+
+StartingGen = configFilePath + "generation_0" + txt;
+saveAs("Results",StartingGen);
+
+selectWindow("generation_0" + txt); //-------------Cull the uneeded tables.
+		run("Close");
+
+}
+
+
+
+
+//===========================================================================
+// Customise Algorithm Variables
+//============================================================================
+
+//-----------------------------------------------
+// Choice Table New
+//-----------------------------------------------
+
+acceptBreed="no";
+
+while(acceptBreed=="no"){
+
+unitChoices = newArray("integer", "percentage");
+
+Dialog.create("Pool Settings Part 0.5");
+
+	
+		Dialog.addMessage("_________________Pool Units____________________");
+		Dialog.addMessage("Choose which unit you wish to use for the deletion and population pools");
+		Dialog.addMessage("Integers are easier to use when tailoring to specific populations");
+		Dialog.addMessage("Percentages are useful for settings being flexible across multiple population sizes");
+
+		Dialog.addChoice("                                                        Unit Choice =", unitChoices, defaultSettings[4]);
+
+
+		Dialog.show();
+		
+unitChoice = Dialog.getChoice();
+
+
+if(unitChoice == "integer"){
+
+
+
+		DeletionPool = newArray();
+
+		for(i=1; i<=(popSize)/2; i++){
+
+		//value = i*2/popSize*100;
+		//tString = d2s(value , 2) + "%";
+		tString = toString(i*2);
+
+		DeletionPool = Array.concat(DeletionPool, tString);
+		}
+		
+
+
+
+
+		Dialog.create("Pool Settings Part 1");
+
+			
+				Dialog.addMessage("_________________(3) Deletion Pool____________________");
+				Dialog.addMessage("How many individuals in the population get deleted");
+
+				Dialog.addChoice("                                                        Deletion pool =", DeletionPool, defaultSettings[5]);
+
+
+				Dialog.show();
+				
+				
+
+
+		DeletionSize = parseFloat(Dialog.getChoice());
+
+
+		newPopSize = popSize - DeletionSize;
+
+
+
+
+
+		BreedingPool = newArray();
+
+		for(i=0; i<=(popSize)/2; i++){
+		if( (DeletionSize/(i*2)) == (parseInt(DeletionSize/(i*2)))){
+		BreedingPool = Array.concat(BreedingPool, toString(i*2));
+		}
+		}
+		
+
+
+
+		Dialog.create("Pool Settings Part 2");
+			
+				Dialog.addMessage("_________________(4) Reproductive Pool______________________");
+				Dialog.addMessage("The number of individuals in the population that get to breed");
+				Dialog.addMessage("NOTE the number of times that individuals will reproduce will change depending on how many get to reproduce and how many are deleted.");
+				
+				Dialog.addChoice("                                                        Reproduction pool =",BreedingPool, defaultSettings[6]);
+			
+
+
+
+				Dialog.show();
+
+
+		BreedingSize = Dialog.getChoice();
+
+
+		nonBreeders = newPopSize - parseFloat(BreedingSize);
+		breedLoop =  DeletionSize/parseFloat(BreedingSize);
+
+		breedString = "Each individual that gets to reproduce will reproduce " + breedLoop + " times.";
+		nonbreedString  = "Of the survivors " + nonBreeders + " individuals won't get to breed.";
+		
+		
+		DeletionNumber = DeletionSize;
+		BreedingNumber = BreedingSize;
+		
+		
+
+		}
+
+if(unitChoice == "percentage"){
+
+
+		DeletionPool = newArray();
+
+		for(i=1; i<=(popSize)/2; i++){
+
+		value = i*2/popSize*100;
+		tString = d2s(value,6);
+		
+
+		DeletionPool = Array.concat(DeletionPool, tString);
+
+		
+		
+		
+		}
+		
+
+
+
+
+		Dialog.create("Pool Settings Part 1");
+
+			
+				Dialog.addMessage("_________________(3) Deletion Pool____________________");
+				Dialog.addMessage("The percentage in the population that get deleted");
+
+				Dialog.addChoice("                                                        Deletion pool =", DeletionPool, defaultSettings[5]);
+
+
+				Dialog.show();
+				
+				
+	
+
+		DeletionSize = parseFloat(Dialog.getChoice());
+	
+		DeletionDecimal = DeletionSize /100;
+		
+		DeletionNumber = parseInt(popSize*DeletionDecimal );
+
+		newPopSize = popSize - (DeletionNumber);
+
+
+
+
+		BreedingPool = newArray();
+
+		for(i=0; i<=(popSize)/2; i++){
+		if( (DeletionNumber /(i*2)) == (parseInt(DeletionNumber /(i*2)))){
+		value = i*2/popSize*100;
+		tString = d2s(value , 6);
+		
+		BreedingPool = Array.concat(BreedingPool, 	tString);
+		}
+		}
+		
+
+
+
+
+		Dialog.create("Pool Settings Part 2");
+			
+				Dialog.addMessage("_________________(4) Reproductive Pool______________________");
+				Dialog.addMessage("The number of percentage of the population that get to breed");
+				Dialog.addMessage("NOTE the number of times that individuals will reproduce will change depending on how many get to reproduce and how many are deleted.");
+				
+				Dialog.addChoice("                                                        Reproduction pool % =",BreedingPool, defaultSettings[6]);
+			
+
+
+
+				Dialog.show();
+
+
+		BreedingSize = parseFloat(Dialog.getChoice());
+		BreedingNumber = parseInt(popSize*BreedingSize/100);
+
+		nonBreeders = newPopSize - BreedingNumber;
+		breedLoop =  DeletionNumber/BreedingNumber;
+		
+		if(nonBreeders <= 0){
+		nonBreeders=0;
+		}
+
+		breedString = "Each individual that gets to reproduce will reproduce " + breedLoop + " times.";
+		nonbreedString  = "Of the survivors " + nonBreeders + " individuals won't get to reproduce.";
+
+		}
+
+
+
+
+choices=newArray("yes","no");
+
+Dialog.create("Reproduction Check");
+	
+		Dialog.addMessage("With the current settings chosen:");
+	
+		Dialog.addMessage(breedString);
+		Dialog.addMessage(nonbreedString);
+		
+		Dialog.addMessage("");
+
+		Dialog.addChoice("         Are you happy with this?", choices, "yes");
+	
+
+
+
+		Dialog.show();
+
+acceptBreed = Dialog.getChoice();
+
+
+
+}
+
+//-----------------------------------------------
+// "Generations and Base Mutations"
+//-----------------------------------------------
+MutDistributions = newArray("uniform", "normal", "poisson");
+
+Dialog.create("Generations and Base Mutations");
+
+		Dialog.addMessage("_________________(5) Number of Generations_________________");
+		Dialog.addMessage("The Number of Generations of Selection");
+		Dialog.addNumber("                                                                              N Generations", defaultSettings[7]);
+		
+		Dialog.addMessage("___________________(6.1) Mutation Rate______________________");
+		Dialog.addMessage("Probability of a mutation occuring for each gene within the offspring (T1)");
+
+		Dialog.addNumber("                                                        Offspring Mutation Rate", defaultSettings[8], 5, 6, "");
+
+		Dialog.addMessage("Probability of a mutation occuring for each gene within non-breeding individuals (T2)");
+
+		Dialog.addNumber("                                                                  T2 Mutation Rate", defaultSettings[9], 5, 6, "");
+		
+		Dialog.addMessage("_________________(6.2) Mutation Distribution____________________");
+		Dialog.addMessage("The distribution of mutations that takes place for each gene. \n            uniform = +/- random()\n            normal = +/- random(gaussian)\n            poisson = +/- exp[random()]");
+
+		Dialog.addChoice("                                                        Offspring Mutation Dist", MutDistributions, defaultSettings[10]);
+
+		Dialog.addMessage("Probability of a mutation occuring within Tier 2");
+		Dialog.addChoice("                                                                  T2 Mutation Dist",MutDistributions, defaultSettings[11]);
+
+				
+	Dialog.show();
+
+//-----------------------------------------------
+// Output
+//----------------------------------------------------
+numberGenerations = Dialog.getNumber();
+
+mutRateOffs = Dialog.getNumber();
+mutRateT2 = Dialog.getNumber();
+
+mutDistOffs = Dialog.getChoice();
+mutDistT2 = Dialog.getChoice();
+//----------------------------------------------------
+
+
+
+//-----------------------------------------------
+//"Base Mutations and Mating System"
+//-----------------------------------------------
+crossTypes = newArray("random", "One Point", "Two Point");
+crossCompleteness = newArray("complete", "incomplete");
+
+Uniform = "Mutation Strength = random() / X,";
+Normal = "Mutation Strength = random(gaussian)  / X,";
+Poisson = "Mutation Strength = exp[random()] / X,"   ;
+
+MutStrengMsg = newArray(Uniform, Normal, Poisson);
+
+if(mutDistOffs == "uniform") {
+Offs = 0;
+OffSet = 12;
+}
+if(mutDistOffs == "normal") {
+Offs = 1;
+OffSet = 14;
+}
+if(mutDistOffs == "poisson") {
+Offs = 2;
+OffSet = 16;
+}
+
+if(mutDistT2 == "uniform") {
+Tier2 = 0;
+Tier2Set = 13;
+}
+if(mutDistT2 == "normal") {
+Tier2 = 1;
+Tier2Set = 15;
+}
+if(mutDistT2 == "poisson") {
+Tier2 = 2;
+Tier2Set = 17;
+}
+
+
+
+Dialog.create("Base Mutation Strength and Crossover");
+
+		Dialog.addMessage("____________________(6.3) Mutation Strength______________________");
+		Dialog.addMessage("The strength of the mutation determines the range with which the gene can change.");
+		Dialog.addMessage("Choose the Value of X for Offspring");
+		Dialog.addNumber(MutStrengMsg[Offs]   +   "    X  =", defaultSettings[OffSet]);
+
+		Dialog.addMessage("Choose the Value of X for T2");
+		Dialog.addNumber(MutStrengMsg[Tier2]   +   "    X  =", defaultSettings[Tier2Set]);
+
+
+		Dialog.addMessage("_____________________(7.1) Cross Over Type______________________");
+		Dialog.addMessage("Determines the pattern of recombination of genes between the parents.");
+		Dialog.addMessage("        Random: all genes 50/50 (more variable)\n        One Point: one rand length segments (gene linkage)\n        Two Point: two rand length segments (gene linkage & more variance)");
+
+
+		Dialog.addChoice("                                                                  Cross Over Type",crossTypes, defaultSettings[18]);
+
+
+		Dialog.addMessage("_____________________(7.2) Cross Over Probability______________________");
+		Dialog.addMessage("Determines the probability that genetic crossover occurs");
+		Dialog.addMessage("Setting this probability to 0 renders the population asexual");
+		Dialog.addNumber("                                                                  Cross Over Probability",defaultSettings[19], 5, 6, "");
+		
+		Dialog.addMessage("_____________________(7.3) Cross Over Completeness______________________");
+		Dialog.addMessage("Determines whether genes are copied over wholey (complete) or averaged with random weighting between parents (incomplete.");
+		
+
+		Dialog.addChoice("                                                                  Cross Over Completeness",crossCompleteness , defaultSettings[20]);
+		
+
+Dialog.show();
+
+                                                 		
+
+
+
+
+//-----------------------------------------------
+// Output
+//----------------------------------------------------
+
+mutStrengthOffs = Dialog.getNumber();
+mutStrengthT2 = Dialog.getNumber();
+
+crossOver = Dialog.getChoice();
+
+if (crossOver == "random") 	{
+crossSet1 = 0;
+				} else { 
+				crossSet1 = 1;		 
+				}
+
+if (crossOver == "Two Point") {
+crossSet2 = 1;
+				} else {
+				crossSet2 = 0;                    
+				}
+				
+crossOverProb = parseFloat(Dialog.getNumber());
+crossOverComplete = Dialog.getChoice();				
+				
+				
+
+
+mutStrengthOffs1 = defaultSettings[12];
+mutStrengthOffs2 = defaultSettings[14];
+mutStrengthOffs3 = defaultSettings[16];
+
+mutStrengthT21 = defaultSettings[13];
+mutStrengthT22 = defaultSettings[15];
+mutStrengthT23 = defaultSettings[17];
+
+
+
+if(mutDistOffs == "uniform") {
+mutStrengthOffs1 = mutStrengthOffs;
+}
+
+if(mutDistOffs == "normal") {
+mutStrengthOffs2 = mutStrengthOffs;
+}
+
+if(mutDistOffs == "poisson") {
+mutStrengthOffs3 = mutStrengthOffs;
+}
+
+
+
+if(mutDistT2 == "uniform") {
+mutStrengthT21 = mutStrengthT2;
+}
+
+if(mutDistT2 == "normal") {
+mutStrengthT22 = mutStrengthT2;
+}
+
+if(mutDistT2 == "poisson") {
+mutStrengthT23 = mutStrengthT2;
+}
+
+//----------------------------------------------------
+
+
+MatingSystemTypes = newArray ("random", "ranked", "poly", "disassortative", "assortative", "adaptive");
+
+Adaptive=0;
+Hancock=0;
+
+Dialog.create("Mating System");
+
+		Dialog.addMessage("____________________(8.1) Mating System Type_____________________");
+		Dialog.addMessage("Determines the pattern of mating between the breeding individuals within the population.");
+		Dialog.addMessage("        Random: pairs are randomly selected\n        Ranked: pairs are selected by rank, with the top two mating together, then the next twp\n        Poly: the top 1/6 of T1 get to mate twice with random individuals\n        Disassortative: pairing of the most genotypically distant indviduals\n        Assortative: pairing of the most genotypically similar individuals\n        Adaptive: experimental mating switches between disassortative, random and assortative if genetic diversity between parents goes below Alpha or above Beta");
+
+		Dialog.addChoice("                                               Mating System Type",MatingSystemTypes, defaultSettings[21]);
+
+		Dialog.addMessage("____________________(8.2) Alpha and Beta_____________________");
+		Dialog.addMessage("Determines whether the mating system switches between assortative and dissassortative when using the 'adaptive' mating system");
+		Dialog.addNumber("                                               Alpha = ",defaultSettings[22]);
+		Dialog.addNumber("                                               Beta = ",defaultSettings[23]);
+Dialog.show();
+
+
+
+//-----------------------------------------------
+// Output
+//----------------------------------------------------
+
+MatingSystemChoice = Dialog.getChoice();
+ALPHA = Dialog.getNumber();
+BETA = Dialog.getNumber();
+
+//----------------------------------------------------
+
+
+
+
+
+
+
+//-----------------------------------------------
+// "Additional Mutation Types"
+//-----------------------------------------------
+
+mutationOperatorArray=newArray("offpring", "T2", "both");
+CrowdOperatorTypes=newArray("none", "random", "randomMate", "mutantRegion", "mutantMate");
+
+Dialog.create("Additional Mutation Types");
+
+		Dialog.addMessage("_____________________(9.1) Mutation Inversion______________________");
+		Dialog.addMessage("Adds a probability of a random Inversion of a gene occuring");
+		Dialog.addNumber("					Offspring Inversion Probability =", defaultSettings[24], 5, 6, "");
+		Dialog.addNumber("					T2 Inversion Probability =", defaultSettings[25], 5, 6, "");		
+		
+
+		Dialog.addMessage("_____________________(9.2) Mutation Duplication_____________________");
+		Dialog.addMessage("Adds a probability of a gene randomly duplicating to another gene near by");
+		Dialog.addNumber("					Offspring Dup Probability =", defaultSettings[26], 5, 6, "");
+		Dialog.addNumber("					T2 Dup Probability =", defaultSettings[27], 5, 6, "");
+		
+		Dialog.addMessage("_____________________(9.3) Mutation Scramble_____________________");
+		Dialog.addMessage("Adds a probability of a random section of the genome being scrambled");
+		Dialog.addNumber("					Offspring Scramble Probability =", defaultSettings[28], 5, 6, "");
+		Dialog.addNumber("					T2 Scramble Probability =", defaultSettings[29], 5, 6, "");
+		
+		Dialog.addMessage("_____________________(9.4) Unit Duplication_____________________");
+		Dialog.addMessage("Adds a probability of a unit being dupplicated");
+		Dialog.addNumber("					Offspring Unit Dup Probability =", defaultSettings[30], 5, 6, "");
+		Dialog.addNumber("					T2 Unit Dup Probability =", defaultSettings[31], 5, 6, "");
+		
+
+
+                                                 		
+Dialog.show();
+
+
+//-----------------------------------------------
+// Output
+//----------------------------------------------------
+inversionRateOffs = Dialog.getNumber();
+inversionRateT2 = Dialog.getNumber();
+
+duplicationRateOffs = Dialog.getNumber();
+duplicationRateT2 = Dialog.getNumber();
+
+scrambleRateOffs = Dialog.getNumber();
+scrambleRateT2 = Dialog.getNumber();
+
+unitRateOffs = Dialog.getNumber();
+unitRateT2= Dialog.getNumber();
+//----------------------------------------------------
+
+
+
+
+
+//-----------------------------------------------
+// "Immigration"
+//-----------------------------------------------
+
+
+CrowdOperatorTypes=newArray("none", "random", "randomMate", "mutantRegion", "mutantMate", "dextinction");
+
+removeChoices=newArray();
+for(i=0;i<popSize-DeletionNumber;i++){
+removeChoices=Array.concat(removeChoices, toString(i));
+}
+if(removeChoices.length==0){
+defaultSettings[32] = "none";
+}
+
+
+Dialog.create("Immigration");
+
+	
+		Dialog.addMessage("______________________Immigration________________________");
+		Dialog.addMessage("Adds a pseudo immigration system removing a set number of the least fit individuals and replacing them if genetic diversity drops below a threshold value Delta");
+		Dialog.addMessage("(Note alll of these are Experimental)");
+	
+		Dialog.addMessage("\t none: no immigration is used.\t\n random: a new randomly generated individual is added.\t\n randomMate: a randomly generated individual is mated with the fittest individual and the offspring is used.\t\n mutantRegion: a copy of the fittest individuals with a random section of their genome mutated is added.\t\n mutantMate: the top individuals are mated with mutants of themselves(Requires Even number Removed) and the offspring are added \t\n dextinction: resurrects the top individuals from up to 6 generations ago");
+		Dialog.addChoice("                 Immigration Method =",CrowdOperatorTypes, defaultSettings[32]);
+		Dialog.addNumber("		     Delta =", defaultSettings[33]);
+		Dialog.addChoice("		      	  Number Removed =", removeChoices, defaultSettings[34]);
+
+                                                 		
+Dialog.show(); 
+
+//-----------------------------------------------
+// Output
+//----------------------------------------------------
+crowdOperator = Dialog.getChoice();
+crowdThreshold = Dialog.getNumber(); 
+crowdNumber = Dialog.getChoice();
+//----------------------------------------------------
+
+
+
+
+
+// SAVE PREVIOUSLY USED SETTINGS
+
+
+dataFile = File.open(settingsFilePath);
+
+	print(dataFile, SexType);
+	
+	print(dataFile, popChoice);
+		print(dataFile, popSizeChoice);
+		print(dataFile, popTypeChoice);
+		
+	print(dataFile, unitChoice);	
+	
+	if(unitChoice == "percentage"){
+	print(dataFile, d2s(DeletionSize,6));
+	print(dataFile, d2s(BreedingSize,6));
+	} else {
+	print(dataFile, DeletionSize);
+	print(dataFile, BreedingSize);
+	}
+	
+	print(dataFile, numberGenerations);
+	
+	print(dataFile, d2s(mutRateOffs,10));
+	print(dataFile, d2s(mutRateT2,10));
+
+	print(dataFile, mutDistOffs);
+	print(dataFile, mutDistT2);
+ 
+	print(dataFile, mutStrengthOffs1);
+	print(dataFile, mutStrengthT21);
+
+	print(dataFile, mutStrengthOffs2);
+	print(dataFile, mutStrengthT22);
+
+	print(dataFile, mutStrengthOffs3);
+	print(dataFile, mutStrengthT23);
+
+	print(dataFile, crossOver);
+	print(dataFile, d2s(crossOverProb,10));
+	print(dataFile, crossOverComplete);
+		
+				
+	print(dataFile, MatingSystemChoice);
+		print(dataFile, ALPHA);	
+		print(dataFile, BETA);
+
+	
+	print(dataFile, d2s(inversionRateOffs,10));
+	print(dataFile, d2s(inversionRateT2,10));
+	
+	print(dataFile, d2s(duplicationRateOffs,10));
+	print(dataFile, d2s(duplicationRateT2,10));
+	
+	print(dataFile, d2s(scrambleRateOffs,10));
+	print(dataFile, d2s(scrambleRateT2,10));
+	
+	print(dataFile, d2s(unitRateOffs,10));
+	print(dataFile, d2s(unitRateT2,10));
+
+	
+	print(dataFile, crowdOperator);
+	print(dataFile, crowdThreshold);
+	print(dataFile, crowdNumber);
+	
+
+File.close(dataFile);
+
+
+
+
+
+dataFile = File.open(imageDIR + "/AlgorithmSettings.txt");
+
+	print(dataFile, SexType);
+	
+	print(dataFile, popChoice);
+		print(dataFile, popSizeChoice);
+		print(dataFile, popTypeChoice);
+		
+	print(dataFile, unitChoice);
+
+	if(unitChoice == "percentage"){
+	print(dataFile, d2s(DeletionSize,6));
+	print(dataFile, d2s(BreedingSize,6));
+	} else {
+	print(dataFile, DeletionSize);
+	print(dataFile, BreedingSize);
+	}
+	
+	print(dataFile, numberGenerations);
+	
+	print(dataFile, d2s(mutRateOffs,10));
+	print(dataFile, d2s(mutRateT2,10));
+
+	print(dataFile, mutDistOffs);
+	print(dataFile, mutDistT2);
+ 
+	print(dataFile, mutStrengthOffs1);
+	print(dataFile, mutStrengthT21);
+
+	print(dataFile, mutStrengthOffs2);
+	print(dataFile, mutStrengthT22);
+
+	print(dataFile, mutStrengthOffs3);
+	print(dataFile, mutStrengthT23);
+
+	print(dataFile, crossOver);
+	print(dataFile, d2s(crossOverProb,10));
+	print(dataFile, crossOverComplete);
+		
+				
+	print(dataFile, MatingSystemChoice);
+		print(dataFile, ALPHA);	
+		print(dataFile, BETA);
+
+	
+	print(dataFile, d2s(inversionRateOffs,10));
+	print(dataFile, d2s(inversionRateT2,10));
+	
+	print(dataFile, d2s(duplicationRateOffs,10));
+	print(dataFile, d2s(duplicationRateT2,10));
+	
+	print(dataFile, d2s(scrambleRateOffs,10));
+	print(dataFile, d2s(scrambleRateT2,10));
+	
+	print(dataFile, d2s(unitRateOffs,10));
+	print(dataFile, d2s(unitRateT2,10));
+
+	
+	print(dataFile, crowdOperator);
+	print(dataFile, crowdThreshold);
+	print(dataFile, crowdNumber);
+	
+
+File.close(dataFile);
+
+
+
+
+
+
+
+
+
+
+

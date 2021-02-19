@@ -1,0 +1,11 @@
+ID	Shape	Size	Pattern	Centre	minAngle	maxAngle
+Default_Circle	Circle	200	animal_uni	200	-180	180
+Default_Oval	Oval	250	animal_uni	200	-180	180
+Default_Triangle	Triangle	250	animal_uni	200	-40	40
+Default_Tear	Tear	250	animal_uni	200	-180	180
+Default_Egg	Egg	200	egg	0	200	-180	180
+Default_Moth	Moth	250	animal_bil	200	-40	40
+Default_Grasshopper	Grasshopper	150	animal_bil	200	-180	180
+Default_Newt	Newt	250	animal_bil	200	-180	180
+Default_Toad	Toad	250	animal_bil	200	-180	180
+Default_Crab	Crab	250	animal_bil	215	-180	180

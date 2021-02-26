@@ -3020,18 +3020,19 @@ run("Canvas Size...", ts2);
 			luminanceDifference = Array.concat(luminanceDifference, parseFloat(temp[5]));
 			patternDifference = Array.concat(patternDifference, parseFloat(temp[6]));
 			colourDifference = Array.concat(colourDifference, parseFloat(temp[7]));
+			GabRatArray = Array.concat(GabRatArray, parseFloat(temp[8]));
 			
-			bgLum = Array.concat(bgLum, parseFloat(temp[8]));
-			bgCtrst = Array.concat(bgCtrst, parseFloat(temp[9]));
-			bgAv = Array.concat(bgAv, parseFloat(temp[10]));
-			bgBv = Array.concat(bgBv , parseFloat(temp[11]));
+			bgLum = Array.concat(bgLum, parseFloat(temp[9]));
+			bgCtrst = Array.concat(bgCtrst, parseFloat(temp[10]));
+			bgAv = Array.concat(bgAv, parseFloat(temp[11]));
+			bgBv = Array.concat(bgBv , parseFloat(temp[12]));
 			
-			targetLum = Array.concat(targetLum, parseFloat(temp[12]));
-			targetCtrst = Array.concat(targetCtrst, parseFloat(temp[13]));
-			targetAv = Array.concat(targetAv, parseFloat(temp[14]));
-			targetBv = Array.concat(targetBv, parseFloat(temp[15]));
+			targetLum = Array.concat(targetLum, parseFloat(temp[13]));
+			targetCtrst = Array.concat(targetCtrst, parseFloat(temp[14]));
+			targetAv = Array.concat(targetAv, parseFloat(temp[15]));
+			targetBv = Array.concat(targetBv, parseFloat(temp[16]));
 			
-			GabRatArray = Array.concat(GabRatArray, parseFloat(temp[16]));
+			
 			imageNumArray = Array.concat(imageNumArray, temp[17]);
 			XcoordArray = Array.concat(XcoordArray, parseFloat(temp[18]));
 			YcoordArray = Array.concat(YcoordArray, parseFloat(temp[19]));
